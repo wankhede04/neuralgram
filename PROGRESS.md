@@ -2,7 +2,7 @@
 
 ## Now
 - Phase/Milestone: **M1 — Spine**
-- Task in flight: **M1-2 Canonicalizer (C1)** (next unchecked backlog item)
+- Task in flight: **M1-3 Chunker (C2.1)** (next unchecked backlog item)
 - Last CI: remote CI green on main (P0 exit gate passed); local gate green for M1-1
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M1-2 done: C1 canonicalizer with pluggable normalizer registry; Slack export shape first (ADR-0004 — all-thing-eye unavailable, human approved). Provenance (source/author/timestamp/id/url) attached and embedded in body_md; multibyte preserved; empty messages skipped.
 - 2026-07-06 — P0 exit gate passed (remote CI green: all 7 stages incl. migrations up/down + image boot probe). Phase advanced to M1.
 - 2026-07-06 — M1-1 done: chunks/scores/entities/chunk_entities/summaries/jobs models + reversible migration 0002; uq_chunks_content_hash and uq_jobs_dedupe_key enforced; integration test proves tables, dupe rejection, down/up clean.
 - 2026-07-06 — P0-6 done: structlog JSON logging with OTel trace/span IDs, TracerProvider + FastAPI instrumentation (request → handler-route server span asserted in test), Prometheus registry at /metrics with request counter + latency histogram, x-request-id middleware.

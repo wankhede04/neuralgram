@@ -1,0 +1,21 @@
+{
+  "messages": [
+    {
+      "ts": "1783296000.000100",
+      "user": "U01ALICE",
+      "text": "Deploy for the memory service is scheduled for *Friday*. Please review the migration checklist.",
+      "permalink": "https://example.slack.com/archives/C042MEMORY/p1783296000000100"
+    },
+    {
+      "ts": "1783296120.000200",
+      "user": "U02BOB",
+      "thread_ts": "1783296000.000100",
+      "text": "Checklist looks good — 日本語のテキストも問題なく扱えます 🎉"
+    },
+    {
+      "ts": "1783296240.000300",
+      "user": "U01ALICE",
+      "text": ""
+    }
+  ]
+}
