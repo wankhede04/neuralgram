@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from neuralgram.api.deps import require_tenant
 from neuralgram.common.errors import UnsupportedSourceError
+from neuralgram.compression.engine import compress
 from neuralgram.ingestion.canonicalize import ingest as canonicalize
 from neuralgram.memory.chunker import chunk
 from neuralgram.memory.retrieval import ChunkRetrieval, RetrievedChunk
@@ -45,10 +46,14 @@ async def ingest_endpoint(
         ) from exc
 
     store = request.app.state.content_store
+    budget = request.app.state.settings.ingest_compress_budget_tokens
     inserted = 0
     skipped = 0
     for doc in docs:
-        result = await store.persist(chunk(doc, tenant_id))
+        compressed = compress(doc.body_md, budget)
+        result = await store.persist(
+            chunk(doc.model_copy(update={"body_md": compressed.text}), tenant_id)
+        )
         inserted += result.inserted
         skipped += result.skipped
     return IngestResponse(documents=len(docs), chunks_inserted=inserted, chunks_skipped=skipped)

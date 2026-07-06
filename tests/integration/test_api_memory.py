@@ -99,6 +99,14 @@ def test_tenant_b_cannot_see_tenant_a_data(client: TestClient) -> None:
     assert foreign_fetch.status_code == 404
 
 
+def test_compression_metrics_visible_after_real_ingest(client: TestClient) -> None:
+    _ingest(client, KEY_A)
+    metrics_text = client.get("/metrics").text
+    assert 'neuralgram_compression_tokens_in_total{rule="builtin:' in metrics_text
+    assert 'neuralgram_compression_tokens_out_total{rule="builtin:' in metrics_text
+    assert "neuralgram_compression_reduction_pct_count" in metrics_text
+
+
 def test_unknown_source_type_is_422(client: TestClient) -> None:
     response = client.post(
         "/memory/ingest",
