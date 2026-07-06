@@ -8,6 +8,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from neuralgram import __version__
+from neuralgram.api.audit import AuditMiddleware
+from neuralgram.api.routes_admin import router as admin_router
 from neuralgram.api.routes_memory import router as memory_router
 from neuralgram.common.config import Settings, get_settings
 from neuralgram.common.db import build_engine, build_session_factory, build_system_session_factory
@@ -86,6 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="Neuralgram", version=__version__, lifespan=_lifespan)
     app.state.settings = settings
     app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(AuditMiddleware)
 
     @app.exception_handler(SpendCapExceededError)
     async def _spend_cap_handler(request: Request, exc: SpendCapExceededError) -> JSONResponse:
@@ -93,6 +96,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.mount("/metrics", metrics_app())
     app.include_router(memory_router)
+    app.include_router(admin_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

@@ -6,7 +6,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
-from neuralgram.api.deps import require_tenant
+from neuralgram.api.deps import require_role, require_tenant
 from neuralgram.common.db import tenant_session
 from neuralgram.common.errors import UnsupportedSourceError
 from neuralgram.compression.engine import compress
@@ -18,6 +18,7 @@ from neuralgram.memory.tree_retrieval import SummaryNode, TreeRetrieval
 router = APIRouter(prefix="/memory", tags=["memory"])
 
 Tenant = Annotated[str, Depends(require_tenant)]
+WriterTenant = Annotated[str, Depends(require_role("writer"))]
 
 
 class IngestRequest(BaseModel):
@@ -38,7 +39,7 @@ class IngestResponse(BaseModel):
 
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_endpoint(
-    body: IngestRequest, tenant_id: Tenant, request: Request
+    body: IngestRequest, tenant_id: WriterTenant, request: Request
 ) -> IngestResponse:
     """Canonicalize `payload`, chunk it, and persist rows + vault files atomically."""
     try:
