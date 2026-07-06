@@ -59,3 +59,16 @@ leak (insert failure reveals another tenant has the same content).
 **Consequence.** Identical content is stored once per tenant (small duplication across
 tenants) in exchange for strict tenant isolation of the dedupe behavior. Property tests
 assert both idempotency and cross-tenant non-collision.
+
+## ADR-0006 — M1 API auth: per-tenant API keys (2026-07-06, M1-7)
+
+**Context.** Auth is a security-critical human gate (BUILD-LOOP §6). The spec's plan —
+reuse all-thing-eye's web3-wallet auth — is impossible (codebase unavailable, ADR-0004).
+Escalated; human chose per-tenant API keys for M1.
+**Decision.** `x-api-key` header resolved to `tenant_id` via a Settings-sourced mapping
+(env `API_KEYS`, JSON). Keys compared with `hmac.compare_digest`; missing/unknown key →
+401; keys never logged; no default keys (empty map = no access). All /memory routes
+require the dependency; tenant_id flows into the tenant-scoped repositories.
+**Consequence.** Simple, testable tenant scoping for M1–M4. Key storage is env-based
+(dev-grade): M5-1/M5-5 must replace this with the chosen D1-driven tenancy model and a
+secret manager, including rotation.

@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     vault_path: str = "./vault"
 
+    # Maps API key -> tenant_id (ADR-0006). Empty by default: no key, no access.
+    api_keys: dict[str, str] = {}
+
 
 @lru_cache
 def get_settings() -> Settings:
