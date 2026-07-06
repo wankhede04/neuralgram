@@ -2,7 +2,7 @@
 
 ## Now
 - Phase/Milestone: **M4 — Routing & margin**
-- Task in flight: **M4-2 Provider adapters + failover** (unblocked by D3=allowed)
+- Task in flight: **M4 exit gate check**, then M5-1 Tenancy model (D1=organizational)
 - Last CI: remote CI green on main through M4-5 (run 28792392742)
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M4-2 done: Anthropic + OpenAI adapters (httpx, contract-tested request shape + parsing against mock transports, HTTP/parse errors → ProviderError); ProviderHealth circuit breaker (threshold 3, cooldown, re-admit); RouteTable fallbacks + gateway failover with retry/backoff — primary-down→secondary-serves proven, tripped providers skipped without calls. Real-key activation remains a cost gate.
 - 2026-07-06 — M4-5 done: margin validated at **96.9% reduction** (naive $0.0708 vs optimized $0.0022 on real fixtures; ADR-0012); ≥50% bar enforced in CI. **Loop HALTED**: M4-2 + M4 exit gate blocked on D3; M5 blocked on D1. Escalating to human.
 - 2026-07-06 — M4-4 done: ResponseCache over gateway.complete (key = provider|model|messages hash) — hits return verbatim results with no model call/spend/cap-check; hit/miss counters; Redis impl with TTL + graceful degradation to miss on backend failure (tested against a dead backend); InMemory impl for dev/tests. Wired into lifespan.
 - 2026-07-06 — M4-3 done: usage_events table (migration 0004) + UsageMeter — price-table cost math, per-tenant attribution, hard caps checked pre-flight (cap trip blocks complete+embed, other tenants unaffected); gateway complete/embed take tenant_id, all pipeline callers pass it; Prometheus tokens/cost counters by tenant+hint; API maps cap trips to 429. M4-2 skipped (BLOCKED on D3).

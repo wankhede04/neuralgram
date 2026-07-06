@@ -27,14 +27,24 @@ def mock_route_table() -> dict[str, tuple[str, str]]:
 
 
 class RouteTable:
-    """Mutable hint -> (provider, model) table with concrete-name fallthrough."""
+    """Mutable hint -> (provider, model) table with concrete-name fallthrough.
 
-    def __init__(self, routes: dict[str, tuple[str, str]], default_provider: str) -> None:
+    `fallbacks` lists additional (provider, model) candidates per hint,
+    tried in order when the primary fails (M4-2 failover).
+    """
+
+    def __init__(
+        self,
+        routes: dict[str, tuple[str, str]],
+        default_provider: str,
+        fallbacks: dict[str, list[tuple[str, str]]] | None = None,
+    ) -> None:
         unknown = set(routes) - set(HINTS)
         if unknown:
             raise RoutingError(f"unknown hints in route table: {sorted(unknown)}")
         self._routes = dict(routes)
         self._default_provider = default_provider
+        self._fallbacks = {k: list(v) for k, v in (fallbacks or {}).items()}
 
     def resolve(self, model_or_hint: str) -> Resolution:
         """Resolve a hint via the table, or fall a concrete name through to the default provider.
@@ -50,6 +60,16 @@ class RouteTable:
             provider, model = self._routes[hint]
             return Resolution(provider=provider, model=model, hint=hint)
         return Resolution(provider=self._default_provider, model=model_or_hint)
+
+    def candidates(self, model_or_hint: str) -> list[Resolution]:
+        """The primary resolution followed by its failover candidates, in order."""
+        primary = self.resolve(model_or_hint)
+        if primary.hint is None:
+            return [primary]
+        return [primary] + [
+            Resolution(provider=p, model=m, hint=primary.hint)
+            for p, m in self._fallbacks.get(primary.hint, [])
+        ]
 
     def remap(self, hint: str, provider: str, model: str) -> None:
         """Repoint a hint at runtime (spec: route table remappable at runtime)."""

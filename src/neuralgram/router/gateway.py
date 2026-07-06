@@ -4,16 +4,19 @@ Only the mock provider exists for now. Real provider adapters are gated
 work (external cost / D3 legality) and land in M2-3 / M4-2.
 """
 
+import asyncio
 import hashlib
 import math
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel
 
 from neuralgram.common.config import Settings
-from neuralgram.common.errors import RoutingError
+from neuralgram.common.errors import ProviderError, RoutingError
 from neuralgram.observability import metrics
-from neuralgram.router.routing import RouteTable, mock_route_table
+from neuralgram.router.health import ProviderHealth
+from neuralgram.router.routing import Resolution, RouteTable, mock_route_table
 
 if TYPE_CHECKING:
     from neuralgram.router.metering import UsageMeter
@@ -134,11 +137,19 @@ class ModelGateway:
         route_table: RouteTable,
         meter: "UsageMeter | None" = None,
         cache: ResponseCache | None = None,
+        health: ProviderHealth | None = None,
+        retry_attempts: int = 2,
+        backoff_seconds: float = 0.2,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
         self._providers = providers
         self._route_table = route_table
         self._meter = meter
         self._cache = cache
+        self._health = health or ProviderHealth()
+        self._retry_attempts = retry_attempts
+        self._backoff_seconds = backoff_seconds
+        self._sleep = sleep
 
     @property
     def route_table(self) -> RouteTable:
@@ -159,11 +170,12 @@ class ModelGateway:
         A cache hit is returned verbatim — no model call, no spend, no cap
         check; misses take the full metered path and populate the cache.
         """
-        resolution = self._route_table.resolve(model_or_hint)
-        hint_label = resolution.hint or "none"
+        candidates = self._route_table.candidates(model_or_hint)
+        primary = candidates[0]
+        hint_label = primary.hint or "none"
         key: str | None = None
         if self._cache is not None:
-            key = cache_key(resolution.provider, resolution.model, messages)
+            key = cache_key(primary.provider, primary.model, messages)
             cached = await self._cache.get(key)
             if cached is not None:
                 metrics.cache_hits_total.labels(hint_label).inc()
@@ -172,19 +184,47 @@ class ModelGateway:
 
         if self._meter is not None and tenant_id is not None:
             await self._meter.check_cap(tenant_id)
-        result = await self._provider_for(resolution.provider).complete(messages, resolution.model)
+
+        result, served_by = await self._complete_with_failover(messages, candidates)
         if self._meter is not None and tenant_id is not None:
             await self._meter.record(
                 tenant_id,
-                resolution.provider,
-                resolution.model,
-                resolution.hint,
+                served_by.provider,
+                served_by.model,
+                served_by.hint,
                 result.usage.tokens_in,
                 result.usage.tokens_out,
             )
         if self._cache is not None and key is not None:
             await self._cache.set(key, result)
         return result
+
+    async def _complete_with_failover(
+        self, messages: list[Message], candidates: list[Resolution]
+    ) -> tuple[CompletionResult, Resolution]:
+        """Try each candidate in order (skipping tripped providers), with retries.
+
+        Raises `ProviderError` only when every candidate is exhausted.
+        """
+        last_error: ProviderError | None = None
+        for candidate in candidates:
+            if not self._health.is_available(candidate.provider):
+                continue
+            provider = self._provider_for(candidate.provider)
+            for attempt in range(self._retry_attempts):
+                try:
+                    result = await provider.complete(messages, candidate.model)
+                except ProviderError as exc:
+                    last_error = exc
+                    self._health.record_failure(candidate.provider)
+                    if attempt + 1 < self._retry_attempts:
+                        await self._sleep(self._backoff_seconds * (2**attempt))
+                else:
+                    self._health.record_success(candidate.provider)
+                    return result, candidate
+        raise ProviderError(
+            f"all providers exhausted for candidates {[(c.provider, c.model) for c in candidates]}"
+        ) from last_error
 
     async def embed(self, texts: list[str], tenant_id: str | None = None) -> list[list[float]]:
         """Embed texts via the provider routed for `hint:embed`."""
