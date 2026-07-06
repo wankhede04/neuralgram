@@ -34,3 +34,16 @@ paid plan — then enable required status checks for all seven CI jobs.
 **Consequence.** The P0-3 criterion "a deliberately failing test blocks merge" is
 satisfied procedurally (red check demonstrated on a verification PR, closed unmerged),
 not mechanically. Risk of accidental red merges rests on process until protection is enabled.
+
+## ADR-0004 — Canonicalizer built against Slack export shape (2026-07-06, M1-2)
+
+**Context.** M1-2 calls for reusing an all-thing-eye collector, but that codebase is not
+accessible from this environment (checked filesystem + GitHub account; escalated, human
+chose to proceed without it).
+**Decision.** Implement C1 against the standard Slack export payload shape (channel
+messages with `ts`, `user`, `text`, optional `thread_ts`/`permalink`). The normalizer
+registry keeps `source_type` pluggable so the real all-thing-eye collector payloads can
+be wired in as additional normalizers when access exists.
+**Consequence.** First supported source is Slack. When all-thing-eye access arrives,
+add its payload shapes as normalizers and validate against real collector output —
+tracked as a follow-up under M1-2 in the backlog.

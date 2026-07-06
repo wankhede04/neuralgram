@@ -7,3 +7,7 @@ class NeuralgramError(Exception):
 
 class MissingTenantScopeError(NeuralgramError):
     """A tenant-scoped repository was used without a valid tenant_id."""
+
+
+class UnsupportedSourceError(NeuralgramError):
+    """An ingest payload arrived for a source_type with no registered normalizer."""
