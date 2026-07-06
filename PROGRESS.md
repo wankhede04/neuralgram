@@ -2,8 +2,8 @@
 
 ## Now
 - Phase/Milestone: **P0 — Scaffold**
-- Task in flight: **P0-6 Observability skeleton** (next unchecked backlog item)
-- Last CI: local gate green incl. integration (testcontainers) and build (P0-5)
+- Task in flight: **P0 exit gate check**, then M1-1 Storage models
+- Last CI: local gate fully green (P0-6); awaiting remote CI on main for P0 exit
 
 ## Blocked
 - none
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — P0-6 done: structlog JSON logging with OTel trace/span IDs, TracerProvider + FastAPI instrumentation (request → handler-route server span asserted in test), Prometheus registry at /metrics with request counter + latency histogram, x-request-id middleware.
 - 2026-07-06 — P0-5 done: async SQLAlchemy engine/session, typed error hierarchy, Alembic async harness + reversible baseline migration (pgvector extension), TenantScopedRepository enforcing tenant_id structurally. Integration test proves up/down/up clean on real pgvector Postgres; CI migrations job now active.
 - 2026-07-06 — P0-4 done: typed pydantic Settings (env-sourced, dev-safe defaults), ModelGateway with deterministic MockProvider (hash-derived complete/embed), real providers hard-gated behind RuntimeError. App boots key-free; 8 unit tests, 100% cov.
 - 2026-07-06 — P0-3 done: GitHub Actions CI (lint/typecheck/unit+coverage/integration/migrations/security/build+boot-probe). Repo made private; main pushed; PR #1 green, PR #2 red-blocked and closed. Branch protection unavailable on free-plan private repo → ADR-0003 (procedural merge discipline).
