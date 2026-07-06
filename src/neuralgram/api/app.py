@@ -13,6 +13,7 @@ from neuralgram.common.db import build_engine, build_session_factory
 from neuralgram.memory.extraction import Extractor
 from neuralgram.memory.queue import JobQueue
 from neuralgram.memory.store import ContentStore
+from neuralgram.memory.topics import TopicRouter
 from neuralgram.memory.trees import SourceTree
 from neuralgram.memory.workers import WorkerPool
 from neuralgram.observability.logging import configure_logging
@@ -33,12 +34,14 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.gateway = build_gateway(settings)
     extractor = Extractor(app.state.session_factory, app.state.gateway, queue=app.state.queue)
     tree = SourceTree(app.state.session_factory, app.state.gateway)
+    topics = TopicRouter(app.state.session_factory, app.state.gateway)
     app.state.worker_pool = WorkerPool(
         app.state.queue,
         {
             "extract_chunk": extractor.extract_chunk,
             "append_buffer": tree.append_buffer,
             "flush_stale": tree.flush_stale,
+            "topic_route": topics.topic_route,
         },
     )
     await app.state.worker_pool.start()
