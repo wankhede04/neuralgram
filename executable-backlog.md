@@ -57,7 +57,7 @@ Legend: `Dep:` must be done first · `Gate:` triggers a human gate (BUILD-LOOP �
 - [ ] **M4-2 Provider adapters + failover** — ≥2 providers; health checks; automatic failover + retry/backoff. `Gate:` each real provider = external-cost + legality (D3). *AC:* failover test (primary down → secondary serves). *Dep:* M4-1.
 - [x] **M4-3 Per-tenant metering & spend caps** — real-time usage accounting; hard caps. *AC:* cap trips and blocks further spend in a test; usage attributed per tenant. *Dep:* M4-1, C8.
 - [x] **M4-4 Prompt/response caching** — cache layer over gateway. *AC:* cache hit measured; correctness preserved. *Dep:* M4-1.
-- [ ] **M4-5 Margin validation** — end-to-end token cost with/without compression+routing on real data. *AC:* **50–80% reduction validated & recorded in DECISIONS.md**; if not met, escalate. *Dep:* M4-3, M4-4, M1-8.
+- [x] **M4-5 Margin validation** *(96.9% reduction, ADR-0012; re-validate with real providers post-D3)* — end-to-end token cost with/without compression+routing on real data. *AC:* **50–80% reduction validated & recorded in DECISIONS.md**; if not met, escalate. *Dep:* M4-3, M4-4, M1-8.
 
 **Exit:** BUILD-LOOP §7 M4 gate.
 

@@ -1,12 +1,14 @@
 # Neuralgram — Progress
 
 ## Now
-- Phase/Milestone: **M4 — Routing & margin**
-- Task in flight: **M4-5 Margin validation** (M4-2 remains blocked on D3)
-- Last CI: remote CI green on main (M3 exit gate passed); local gate green for M4-1
+- Phase/Milestone: **M4 — Routing & margin (all unblocked tasks complete; M4-2 + exit gate BLOCKED on D3)**
+- Task in flight: **HALTED — awaiting human decisions (D3 for M4-2/M4 exit; D1 for M5)**
+- Last CI: local gate fully green through M4-5; remote CI green through M4-4 push
 
 ## Blocked
-- **M4-2 Provider adapters + failover** — human gate: D3 (one-account brokering legality) is *pending* and each real provider is an external-cost gate. Skipped per standing rules; M4-3/M4-4/M4-5 proceed (unblocked). The M4 exit gate (provider failover test) cannot pass until D3 is resolved and a human approves provider enablement.
+- **M4-2 Provider adapters + failover** — human gate: D3 (one-account brokering legality) is *pending* and each real provider is an external-cost gate. All other M4 tasks are done; the M4 exit gate (provider failover test + margin re-validation with real providers) cannot pass until D3 is resolved and a human approves provider enablement.
+- **M5 (all tasks)** — human gate: D1 (memory ownership) is *unset*; M5 must not start until it is resolved.
+- **Loop halted here.** Next human actions: (1) resolve D3 → unblocks M4-2 and the M4 exit gate; (2) resolve D1 → unblocks M5. Record decisions in DECISIONS.md, then re-run the loop.
 
 ## Governing decisions
 - D1 memory ownership: **unset** — not required until M5; do NOT start M5 tasks until resolved.
@@ -19,6 +21,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M4-5 done: margin validated at **96.9% reduction** (naive $0.0708 vs optimized $0.0022 on real fixtures; ADR-0012); ≥50% bar enforced in CI. **Loop HALTED**: M4-2 + M4 exit gate blocked on D3; M5 blocked on D1. Escalating to human.
 - 2026-07-06 — M4-4 done: ResponseCache over gateway.complete (key = provider|model|messages hash) — hits return verbatim results with no model call/spend/cap-check; hit/miss counters; Redis impl with TTL + graceful degradation to miss on backend failure (tested against a dead backend); InMemory impl for dev/tests. Wired into lifespan.
 - 2026-07-06 — M4-3 done: usage_events table (migration 0004) + UsageMeter — price-table cost math, per-tenant attribution, hard caps checked pre-flight (cap trip blocks complete+embed, other tenants unaffected); gateway complete/embed take tenant_id, all pipeline callers pass it; Prometheus tokens/cost counters by tenant+hint; API maps cap trips to 429. M4-2 skipped (BLOCKED on D3).
 - 2026-07-06 — M3 exit gate confirmed on remote CI (run 28786768778 success). Milestone advanced to M4.
