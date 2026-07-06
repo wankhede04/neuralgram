@@ -22,6 +22,7 @@ from neuralgram.observability.logging import configure_logging
 from neuralgram.observability.metrics import metrics_app
 from neuralgram.observability.middleware import RequestContextMiddleware
 from neuralgram.observability.tracing import instrument_app, setup_tracing
+from neuralgram.router.cache import RedisResponseCache
 from neuralgram.router.gateway import build_gateway
 from neuralgram.router.metering import SpendCapExceededError, UsageMeter
 
@@ -36,7 +37,9 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.queue = JobQueue(app.state.session_factory)
     meter = UsageMeter(app.state.session_factory, settings.tenant_spend_caps)
     app.state.meter = meter
-    app.state.gateway = build_gateway(settings, meter)
+    cache = RedisResponseCache(settings.redis_url, settings.cache_ttl_seconds)
+    app.state.response_cache = cache
+    app.state.gateway = build_gateway(settings, meter, cache)
     extractor = Extractor(app.state.session_factory, app.state.gateway, queue=app.state.queue)
     tree = SourceTree(app.state.session_factory, app.state.gateway)
     topics = TopicRouter(app.state.session_factory, app.state.gateway)
@@ -59,6 +62,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     finally:
         await app.state.digest_scheduler.stop()
         await app.state.worker_pool.stop()
+        await cache.close()
         await engine.dispose()
 
 

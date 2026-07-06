@@ -35,6 +35,20 @@ compression_tokens_out_total = Counter(
     registry=registry,
 )
 
+cache_hits_total = Counter(
+    "neuralgram_cache_hits_total",
+    "Prompt/response cache hits, by hint.",
+    labelnames=("hint",),
+    registry=registry,
+)
+
+cache_misses_total = Counter(
+    "neuralgram_cache_misses_total",
+    "Prompt/response cache misses, by hint.",
+    labelnames=("hint",),
+    registry=registry,
+)
+
 model_tokens_total = Counter(
     "neuralgram_model_tokens_total",
     "Model tokens by tenant, hint, and direction (in/out).",
