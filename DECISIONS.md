@@ -142,3 +142,20 @@ latency at 4× data).
 **Consequence.** M3 cost-boundedness is proven and continuously guarded. Re-measure at
 production volumes during R-1 load testing; revisit pgvector indexing (IVFFlat/HNSW)
 if latency growth approaches the cap.
+
+## ADR-0012 — M4-5 margin validation: 96.9% cost reduction (2026-07-06)
+
+**Context.** The backlog requires validating the 50–80% token-cost-reduction claim on
+real sample data with compression + routing (+ caching) versus a naive pipeline, and
+recording the result here.
+**Method.** `tests/e2e/test_margin_validation.py`: real fixtures (HTML newsletter +
+Slack export), each processed twice (agents re-touch context). Naive = raw tokens to
+the reasoning tier, repeats re-billed. Optimized = C3 compression → `hint:fast`
+routing → response cache (repeat passes free). Costs from the real price table.
+**Result.** naive **$0.070800** vs optimized **$0.002194** → **96.9% reduction**,
+exceeding the 50–80% claim. Lever contributions: routing to the cheap tier (15→1
+USD/1M input) dominates; compression (~30%+ token cut on HTML) and cache hits on
+repeats compound it. The ≥50% bar is enforced on every CI run.
+**Caveat.** Prices for mock models mirror realistic tier ratios but real-provider
+token counts differ from the 4-chars/token estimate. Re-run this validation with real
+providers once M4-2 unblocks (D3) — it is a condition of the M4 exit gate sign-off.
