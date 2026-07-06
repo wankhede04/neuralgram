@@ -46,6 +46,7 @@ async def ingest_endpoint(
         ) from exc
 
     store = request.app.state.content_store
+    queue = request.app.state.queue
     budget = request.app.state.settings.ingest_compress_budget_tokens
     inserted = 0
     skipped = 0
@@ -56,6 +57,10 @@ async def ingest_endpoint(
         )
         inserted += result.inserted
         skipped += result.skipped
+        for chunk_id in result.inserted_ids:
+            await queue.enqueue("extract_chunk", {"chunk_id": chunk_id}, f"extract:{chunk_id}")
+    if inserted:
+        request.app.state.worker_pool.wake()
     return IngestResponse(documents=len(docs), chunks_inserted=inserted, chunks_skipped=skipped)
 
 

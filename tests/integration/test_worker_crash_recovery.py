@@ -79,20 +79,20 @@ async def test_worker_killed_mid_job_job_resumes(async_url: str, queue: JobQueue
         lease_seconds=60,
     )
     await pool_b.start()
-    for _ in range(400):  # up to ~20s for the 1s lease to expire + reclaim
-        if completions:
-            break
-        await asyncio.sleep(0.05)
-    await pool_b.stop()
-
-    assert completions == [{"chunk_id": "crash-1"}], "job must resume after worker death"
-
     engine = create_async_engine(async_url)
+    status = "unknown"
     try:
-        async with engine.connect() as connection:
-            status = (
-                await connection.execute(select(Job.status).where(Job.id == job_id))
-            ).scalar_one()
+        for _ in range(400):  # up to ~20s for the 1s lease to expire + reclaim + ack
+            async with engine.connect() as connection:
+                status = (
+                    await connection.execute(select(Job.status).where(Job.id == job_id))
+                ).scalar_one()
+            if status == "done":
+                break
+            await asyncio.sleep(0.05)
     finally:
         await engine.dispose()
+        await pool_b.stop()
+
+    assert completions == [{"chunk_id": "crash-1"}], "job must resume after worker death"
     assert status == "done", "recovered job must be acked done"
