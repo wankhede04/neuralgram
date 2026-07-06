@@ -19,7 +19,7 @@ Legend: `Dep:` must be done first · `Gate:` triggers a human gate (BUILD-LOOP �
 
 ## M1 — Spine  *(C1, C2.1, C2.5-lexical, C3-deterministic, C5, C6, C8)*
 
-- [ ] **M1-1 Storage models (C6)** — `chunks`, `scores`(stub), `summaries`(stub), `jobs`(stub), `entities`(stub) + migration. *AC:* tables created; `chunks.content_hash` unique constraint. *Dep:* P0-5.
+- [x] **M1-1 Storage models (C6)** — `chunks`, `scores`(stub), `summaries`(stub), `jobs`(stub), `entities`(stub) + migration. *AC:* tables created; `chunks.content_hash` unique constraint. *Dep:* P0-5.
 - [ ] **M1-2 Canonicalizer (C1)** — normalize a source payload → provenance-tagged Markdown; reuse an all-thing-eye collector for one source (pick per first use case). *AC:* given a sample payload, output Markdown carries source/author/timestamp/id. 
 - [ ] **M1-3 Chunker (C2.1)** — ≤3k-token split; content-addressed IDs. *AC (property test):* identical input → identical chunk IDs; re-ingest creates zero duplicates. *Dep:* M1-1, M1-2.
 - [ ] **M1-4 Content store + hot-path persist (C2.1/C6)** — single-transaction write of chunk rows + `.md` vault files; mark `pending_extraction`; **no LLM calls**. *AC:* partial-failure test leaves no dangling rows. *Dep:* M1-3.
