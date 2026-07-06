@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  MOCK_PROVIDERS: "true"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: make lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: make typecheck
+
+  unit:
+    runs-on: ubuntu-latest
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: make test-unit
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: make test-int
+
+  migrations:
+    runs-on: ubuntu-latest
+    needs: unit
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: neuralgram
+          POSTGRES_PASSWORD: neuralgram # pragma: allowlist secret
+          POSTGRES_DB: neuralgram
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U neuralgram"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://neuralgram:neuralgram@localhost:5432/neuralgram # pragma: allowlist secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      # Activates when the Alembic harness lands (P0-5); no-op until then.
+      - name: Migrations up + down on a scratch DB
+        run: |
+          if [ -f alembic.ini ]; then
+            uv run alembic upgrade head
+            uv run alembic downgrade -1
+          else
+            echo "no alembic.ini yet — skipping (pre-P0-5)"
+          fi
+
+  security:
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: make security
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [integration, migrations, security]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: make build
+      - name: Boot image and probe /health
+        run: |
+          docker run -d --rm --name smoke -p 8000:8000 neuralgram:dev
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8000/health; then ok=1; break; fi
+            sleep 1
+          done
+          docker stop smoke
+          [ "${ok:-0}" = "1" ]
