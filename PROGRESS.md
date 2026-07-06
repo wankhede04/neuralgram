@@ -2,7 +2,7 @@
 
 ## Now
 - Phase/Milestone: **M4 — Routing & margin**
-- Task in flight: **M4-4 Prompt/response caching** (M4-2 remains blocked on D3)
+- Task in flight: **M4-5 Margin validation** (M4-2 remains blocked on D3)
 - Last CI: remote CI green on main (M3 exit gate passed); local gate green for M4-1
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M4-4 done: ResponseCache over gateway.complete (key = provider|model|messages hash) — hits return verbatim results with no model call/spend/cap-check; hit/miss counters; Redis impl with TTL + graceful degradation to miss on backend failure (tested against a dead backend); InMemory impl for dev/tests. Wired into lifespan.
 - 2026-07-06 — M4-3 done: usage_events table (migration 0004) + UsageMeter — price-table cost math, per-tenant attribution, hard caps checked pre-flight (cap trip blocks complete+embed, other tenants unaffected); gateway complete/embed take tenant_id, all pipeline callers pass it; Prometheus tokens/cost counters by tenant+hint; API maps cap trips to 429. M4-2 skipped (BLOCKED on D3).
 - 2026-07-06 — M3 exit gate confirmed on remote CI (run 28786768778 success). Milestone advanced to M4.
 - 2026-07-06 — M4-1 done: RouteTable for all six hints with runtime remap + concrete-name fallthrough to default provider; gateway dispatches complete/embed through the table across a provider-adapter registry. Resolution unit-tested per hint, fallthrough, remap, unknown-hint/provider errors.

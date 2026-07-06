@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from neuralgram.common.config import Settings
 from neuralgram.common.errors import RoutingError
+from neuralgram.observability import metrics
 from neuralgram.router.routing import RouteTable, mock_route_table
 
 if TYPE_CHECKING:
@@ -52,6 +53,24 @@ class ModelProvider(Protocol):
     async def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed each text into a fixed-dimension vector."""
         ...
+
+
+class ResponseCache(Protocol):
+    """Interface for prompt/response caches over `complete` (M4-4)."""
+
+    async def get(self, key: str) -> CompletionResult | None:
+        """Return the cached completion for `key`, or None."""
+        ...
+
+    async def set(self, key: str, value: CompletionResult) -> None:
+        """Store `value` under `key`."""
+        ...
+
+
+def cache_key(provider: str, model: str, messages: list[Message]) -> str:
+    """Deterministic cache key over the resolved route and full message list."""
+    joined = "\x1e".join(f"{m.role}\x1f{m.content}" for m in messages)
+    return "nc:" + hashlib.sha256(f"{provider}|{model}|{joined}".encode()).hexdigest()
 
 
 def _bow_embedding(text: str, dim: int) -> list[float]:
@@ -114,10 +133,12 @@ class ModelGateway:
         providers: dict[str, ModelProvider],
         route_table: RouteTable,
         meter: "UsageMeter | None" = None,
+        cache: ResponseCache | None = None,
     ) -> None:
         self._providers = providers
         self._route_table = route_table
         self._meter = meter
+        self._cache = cache
 
     @property
     def route_table(self) -> RouteTable:
@@ -133,8 +154,22 @@ class ModelGateway:
     async def complete(
         self, messages: list[Message], model_or_hint: str, tenant_id: str | None = None
     ) -> CompletionResult:
-        """Resolve `model_or_hint` and generate a completion on the routed provider."""
+        """Resolve `model_or_hint` and generate a completion on the routed provider.
+
+        A cache hit is returned verbatim — no model call, no spend, no cap
+        check; misses take the full metered path and populate the cache.
+        """
         resolution = self._route_table.resolve(model_or_hint)
+        hint_label = resolution.hint or "none"
+        key: str | None = None
+        if self._cache is not None:
+            key = cache_key(resolution.provider, resolution.model, messages)
+            cached = await self._cache.get(key)
+            if cached is not None:
+                metrics.cache_hits_total.labels(hint_label).inc()
+                return cached
+            metrics.cache_misses_total.labels(hint_label).inc()
+
         if self._meter is not None and tenant_id is not None:
             await self._meter.check_cap(tenant_id)
         result = await self._provider_for(resolution.provider).complete(messages, resolution.model)
@@ -147,6 +182,8 @@ class ModelGateway:
                 result.usage.tokens_in,
                 result.usage.tokens_out,
             )
+        if self._cache is not None and key is not None:
+            await self._cache.set(key, result)
         return result
 
     async def embed(self, texts: list[str], tenant_id: str | None = None) -> list[list[float]]:
@@ -163,7 +200,11 @@ class ModelGateway:
         return vectors
 
 
-def build_gateway(settings: Settings, meter: "UsageMeter | None" = None) -> ModelGateway:
+def build_gateway(
+    settings: Settings,
+    meter: "UsageMeter | None" = None,
+    cache: ResponseCache | None = None,
+) -> ModelGateway:
     """Construct the gateway for `settings`.
 
     Raises `RuntimeError` if mock mode is off: real provider adapters are
@@ -177,4 +218,6 @@ def build_gateway(settings: Settings, meter: "UsageMeter | None" = None) -> Mode
     providers: dict[str, ModelProvider] = {
         "mock": MockProvider(embedding_dim=settings.embedding_dim)
     }
-    return ModelGateway(providers, RouteTable(mock_route_table(), default_provider="mock"), meter)
+    return ModelGateway(
+        providers, RouteTable(mock_route_table(), default_provider="mock"), meter, cache
+    )

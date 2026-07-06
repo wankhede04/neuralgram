@@ -18,6 +18,7 @@ dependencies = [
     "prometheus-client>=0.20",
     "pgvector>=0.3",
     "regex>=2024.5",
+    "redis>=5",
 ]
 
 [dependency-groups]

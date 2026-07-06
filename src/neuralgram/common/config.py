@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     # Hard per-tenant spend caps in USD (env TENANT_SPEND_CAPS, JSON). No entry = no cap.
     tenant_spend_caps: dict[str, float] = {}
 
+    cache_ttl_seconds: int = 3600
+
 
 @lru_cache
 def get_settings() -> Settings:
