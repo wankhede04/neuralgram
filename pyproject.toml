@@ -30,6 +30,7 @@ dev = [
     "pip-audit>=2.7",
     "detect-secrets>=1.5",
     "testcontainers[postgres]>=4.7",
+    "hypothesis>=6.100",
 ]
 
 [build-system]

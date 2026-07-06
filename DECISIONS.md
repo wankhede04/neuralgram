@@ -47,3 +47,15 @@ be wired in as additional normalizers when access exists.
 **Consequence.** First supported source is Slack. When all-thing-eye access arrives,
 add its payload shapes as normalizers and validate against real collector output —
 tracked as a follow-up under M1-2 in the backlog.
+
+## ADR-0005 — Chunk hash includes tenant_id (2026-07-06, M1-3)
+
+**Context.** `chunks.content_hash` carries a global unique constraint (M1-1 AC). A pure
+content hash would dedupe identical content *across tenants*: tenant B's ingest of text
+tenant A already stored would be silently rejected — a correctness bug and an isolation
+leak (insert failure reveals another tenant has the same content).
+**Decision.** `content_hash = sha256(tenant_id + "\n" + normalized_content)`; chunk
+`id == content_hash`. Idempotency stays per-tenant; the global unique constraint stands.
+**Consequence.** Identical content is stored once per tenant (small duplication across
+tenants) in exchange for strict tenant isolation of the dedupe behavior. Property tests
+assert both idempotency and cross-tenant non-collision.
