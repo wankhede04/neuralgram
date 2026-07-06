@@ -1,9 +1,9 @@
 # Neuralgram — Progress
 
 ## Now
-- Phase/Milestone: **M1 — Spine (complete, pending remote CI confirmation)**
-- Task in flight: **M2-1 Durable job queue (C2.2)** (next unchecked backlog item)
-- Last CI: local gate fully green through M1-9 (unit+int+e2e); awaiting remote CI on main for M1 exit
+- Phase/Milestone: **M2 — Enrichment**
+- Task in flight: **M2-2 Worker pool** (next unchecked backlog item)
+- Last CI: remote CI green on main (M1 exit gate passed); local gate green for M2-1
 
 ## Blocked
 - none
@@ -19,6 +19,8 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M1 exit gate confirmed on remote CI (run 28779930024 success). Milestone advanced to M2.
+- 2026-07-06 — M2-1 done: Postgres-backed JobQueue (ADR-0007) — SKIP LOCKED claims, dedupe_key ON CONFLICT, lease expiry recovery, run_after scheduling, bounded retries→failed. Integration tests: dedupe, lease-expiry reclaim, deferred run_after, retry exhaustion, concurrent distinct claims.
 - 2026-07-06 — M1-9 done; **M1 exit criteria met**: e2e spine green (ingest real sample → search → fetch), idempotent re-ingest asserted (0 new chunks), provenance on every result, token-reduction metric recorded on real sample data. e2e suite wired into make test + CI integration stage.
 - 2026-07-06 — M1-8 done: Prometheus compression metrics (tokens_in/out counters + reduction_pct histogram, labeled by rule); compress() records them per call; ingest route now runs deterministic compression (high budget, no lossy truncation) so a real sample ingest shows reduction on /metrics.
 - 2026-07-06 — M1-7 done: /memory/ingest, /memory/search, /memory/chunks/{id} with per-tenant API-key auth (ADR-0006, human-approved design). OpenAPI documents routes + security scheme; authz tests (401s, cross-tenant 404/empty); full API roundtrip + idempotent re-ingest proven against real Postgres.
