@@ -1,8 +1,8 @@
 # Neuralgram — Progress
 
 ## Now
-- Phase/Milestone: **M4 — Routing & margin**
-- Task in flight: **M4 exit gate check**, then M5-1 Tenancy model (D1=organizational)
+- Phase/Milestone: **M5 — Hardening**
+- Task in flight: **M5-2 RBAC + audit** (next unchecked backlog item)
 - Last CI: remote CI green on main through M4-5 (run 28792392742)
 
 ## Blocked
@@ -19,6 +19,8 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M4 exit gate confirmed on remote CI (run 28796254055 success). Milestone advanced to M5 (D1=organizational).
+- 2026-07-06 — M5-1 done: fail-closed Postgres RLS on all six tenant tables (migration 0005 also adds tenant_id to scores/chunk_entities); tenant GUC sessions on API reads, system-context sessions for workers; negative tests with a NON-superuser role prove no-context→nothing, tenant-A→A-only (even raw SQL), system→all (ADR-0014).
 - 2026-07-06 — M4-2 done: Anthropic + OpenAI adapters (httpx, contract-tested request shape + parsing against mock transports, HTTP/parse errors → ProviderError); ProviderHealth circuit breaker (threshold 3, cooldown, re-admit); RouteTable fallbacks + gateway failover with retry/backoff — primary-down→secondary-serves proven, tripped providers skipped without calls. Real-key activation remains a cost gate.
 - 2026-07-06 — M4-5 done: margin validated at **96.9% reduction** (naive $0.0708 vs optimized $0.0022 on real fixtures; ADR-0012); ≥50% bar enforced in CI. **Loop HALTED**: M4-2 + M4 exit gate blocked on D3; M5 blocked on D1. Escalating to human.
 - 2026-07-06 — M4-4 done: ResponseCache over gateway.complete (key = provider|model|messages hash) — hits return verbatim results with no model call/spend/cap-check; hit/miss counters; Redis impl with TTL + graceful degradation to miss on backend failure (tested against a dead backend); InMemory impl for dev/tests. Wired into lifespan.

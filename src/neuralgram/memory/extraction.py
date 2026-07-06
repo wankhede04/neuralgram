@@ -110,7 +110,7 @@ class Extractor:
 
             lifecycle = "admitted" if verdict.score >= self._admit_threshold else "dropped"
             linked_entity_ids: list[str] = []
-            await persist_embeddings(session, {chunk_id: embedding})
+            await persist_embeddings(session, {chunk_id: embedding}, chunk.tenant_id)
             await session.execute(
                 update(Score).where(Score.chunk_id == chunk_id).values(deep_score=verdict.score)
             )
@@ -153,7 +153,7 @@ class Extractor:
             await session.execute(entity_row)
             link = (
                 insert(ChunkEntity)
-                .values(chunk_id=chunk.id, entity_id=entity_id)
+                .values(chunk_id=chunk.id, entity_id=entity_id, tenant_id=chunk.tenant_id)
                 .on_conflict_do_nothing()
             )
             await session.execute(link)

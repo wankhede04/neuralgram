@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
 from neuralgram.api.deps import require_tenant
+from neuralgram.common.db import tenant_session
 from neuralgram.common.errors import UnsupportedSourceError
 from neuralgram.compression.engine import compress
 from neuralgram.ingestion.canonicalize import ingest as canonicalize
@@ -80,7 +81,7 @@ async def search_endpoint(
     """Search this tenant's chunks (keyword, semantic, or hybrid); results carry provenance."""
     factory = request.app.state.session_factory
     retrieval = ChunkRetrieval(tenant_id)
-    async with factory() as session:
+    async with tenant_session(factory, tenant_id) as session:
         if mode == "keyword":
             return await retrieval.search(session, q, limit)
         query_vector = (await request.app.state.gateway.embed([q], tenant_id=tenant_id))[0]
@@ -100,7 +101,7 @@ async def summaries_endpoint(
     """Tree-scoped retrieval: drill_down (source), topic (entity), global (day)."""
     factory = request.app.state.session_factory
     retrieval = TreeRetrieval(tenant_id)
-    async with factory() as session:
+    async with tenant_session(factory, tenant_id) as session:
         if tree == "source":
             return await retrieval.drill_down(session, scope_id, level)
         if tree == "topic":
@@ -120,7 +121,7 @@ async def summaries_endpoint(
 async def fetch_endpoint(chunk_id: str, tenant_id: Tenant, request: Request) -> RetrievedChunk:
     """Fetch one chunk by id within this tenant; 404 if absent or foreign."""
     factory = request.app.state.session_factory
-    async with factory() as session:
+    async with tenant_session(factory, tenant_id) as session:
         found = await ChunkRetrieval(tenant_id).fetch(session, chunk_id)
     if found is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="chunk not found")

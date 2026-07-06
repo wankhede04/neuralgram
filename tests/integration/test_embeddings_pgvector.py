@@ -87,7 +87,7 @@ async def test_embeddings_persist_and_similarity_query_works(
 
     vectors = await gateway.embed([d.content_md for d in drafts])
     written = await persist_embeddings(
-        session, {d.id: v for d, v in zip(drafts, vectors, strict=True)}
+        session, {d.id: v for d, v in zip(drafts, vectors, strict=True)}, "tenant-embed"
     )
     await session.commit()
     assert written == len(drafts)
@@ -106,7 +106,7 @@ async def test_embeddings_persist_and_similarity_query_works(
     assert nearest == drafts[0].id
 
     # Upsert: re-persisting the same chunk overwrites, not duplicates.
-    again = await persist_embeddings(session, {drafts[0].id: vectors[0]})
+    again = await persist_embeddings(session, {drafts[0].id: vectors[0]}, "tenant-embed")
     await session.commit()
     assert again == 1
     count = len((await session.execute(select(Score.chunk_id))).scalars().all())

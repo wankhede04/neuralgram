@@ -83,7 +83,7 @@ async def _seed_entity_with_mentions(
             chunk_ids.append(chunk_id)
         await session.flush()  # parents before FK links (no ORM relationships defined)
         for chunk_id in chunk_ids:
-            session.add(ChunkEntity(chunk_id=chunk_id, entity_id=entity_id))
+            session.add(ChunkEntity(chunk_id=chunk_id, entity_id=entity_id, tenant_id=TENANT))
         await session.commit()
     return entity_id
 

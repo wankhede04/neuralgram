@@ -60,6 +60,7 @@ class Score(Base):
     chunk_id: Mapped[str] = mapped_column(
         ForeignKey("chunks.id", ondelete="CASCADE"), primary_key=True
     )
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
     fast_score: Mapped[float | None] = mapped_column(Float)
     deep_score: Mapped[float | None] = mapped_column(Float)
     hotness: Mapped[float | None] = mapped_column(Float)
@@ -90,6 +91,7 @@ class ChunkEntity(Base):
     entity_id: Mapped[str] = mapped_column(
         ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True
     )
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
 
 
 class Summary(Base):

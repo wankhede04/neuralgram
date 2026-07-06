@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from neuralgram import __version__
 from neuralgram.api.routes_memory import router as memory_router
 from neuralgram.common.config import Settings, get_settings
-from neuralgram.common.db import build_engine, build_session_factory
+from neuralgram.common.db import build_engine, build_session_factory, build_system_session_factory
 from neuralgram.memory.digest import DigestBuilder, DigestScheduler
 from neuralgram.memory.extraction import Extractor
 from neuralgram.memory.queue import JobQueue
@@ -33,17 +33,22 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     engine = build_engine(settings)
     app.state.engine = engine
     app.state.session_factory = build_session_factory(engine)
-    app.state.content_store = ContentStore(app.state.session_factory, Path(settings.vault_path))
-    app.state.queue = JobQueue(app.state.session_factory)
-    meter = UsageMeter(app.state.session_factory, settings.tenant_spend_caps)
+    app.state.system_session_factory = build_system_session_factory(engine)
+    app.state.content_store = ContentStore(
+        app.state.system_session_factory, Path(settings.vault_path)
+    )
+    app.state.queue = JobQueue(app.state.system_session_factory)
+    meter = UsageMeter(app.state.system_session_factory, settings.tenant_spend_caps)
     app.state.meter = meter
     cache = RedisResponseCache(settings.redis_url, settings.cache_ttl_seconds)
     app.state.response_cache = cache
     app.state.gateway = build_gateway(settings, meter, cache)
-    extractor = Extractor(app.state.session_factory, app.state.gateway, queue=app.state.queue)
-    tree = SourceTree(app.state.session_factory, app.state.gateway)
-    topics = TopicRouter(app.state.session_factory, app.state.gateway)
-    digest = DigestBuilder(app.state.session_factory, app.state.gateway)
+    extractor = Extractor(
+        app.state.system_session_factory, app.state.gateway, queue=app.state.queue
+    )
+    tree = SourceTree(app.state.system_session_factory, app.state.gateway)
+    topics = TopicRouter(app.state.system_session_factory, app.state.gateway)
+    digest = DigestBuilder(app.state.system_session_factory, app.state.gateway)
     app.state.worker_pool = WorkerPool(
         app.state.queue,
         {
@@ -54,7 +59,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             "digest_daily": digest.digest_daily,
         },
     )
-    app.state.digest_scheduler = DigestScheduler(app.state.queue, app.state.session_factory)
+    app.state.digest_scheduler = DigestScheduler(app.state.queue, app.state.system_session_factory)
     await app.state.worker_pool.start()
     app.state.digest_scheduler.start()
     try:
