@@ -2,7 +2,7 @@
 
 ## Now
 - Phase/Milestone: **M2 — Enrichment**
-- Task in flight: **M2-4 Deep scoring + entity extraction (C2.3)** (next unchecked backlog item)
+- Task in flight: **M2-5 Semantic search (C2.5)** (next unchecked backlog item)
 - Last CI: remote CI green on main (M1 exit gate passed); local gate green for M2-1
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M2-4 done: extract_chunk job — C3-compressed input, gateway JSON verdict with deterministic heuristic fallback (ADR-0008), embedding persisted, entities+links written, lifecycle → admitted/dropped (threshold 0.3); dropped rows retain provenance. Ingest enqueues jobs + wakes pool; app lifespan runs the pool. Worker ack/fail now shielded from cancellation (graceful-stop race found by test).
 - 2026-07-06 — M2-3 done: embed path — gateway embeddings persisted to scores.embedding (pgvector) via upsert; cosine-distance NN query proven; provider contract test suite (mock now, real adapters must join in M4-2). No real provider enabled (cost gate intact).
 - 2026-07-06 — M2-2 done: WorkerPool (N=3 default) with handler registry, model-call semaphore, wake-on-ingest + polling fallback; crash recovery via lease expiry. Integration test kills a worker mid-job → job reclaimed and completed (status done, no lost admits); unit tests prove semaphore cap, wake, failure paths.
 - 2026-07-06 — M1 exit gate confirmed on remote CI (run 28779930024 success). Milestone advanced to M2.

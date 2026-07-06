@@ -87,6 +87,17 @@ class WorkerPool:
             raise
         except Exception:
             logger.exception("worker.job_failed", worker=worker_id, job_id=job.id, kind=job.kind)
-            await self._queue.fail(job.id)
+            await self._finish(self._queue.fail(job.id))
         else:
-            await self._queue.ack(job.id)
+            await self._finish(self._queue.ack(job.id))
+
+    @staticmethod
+    async def _finish(bookkeeping: Awaitable[Any]) -> None:
+        """Run ack/fail to completion even if the worker is cancelled mid-await,
+        so a graceful stop never strands a finished job in 'leased'."""
+        task = asyncio.ensure_future(bookkeeping)
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            await task
+            raise

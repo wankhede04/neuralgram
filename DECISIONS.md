@@ -83,3 +83,17 @@ leases are claimable again), `run_after` scheduling, bounded retries with backof
 (3 tries, 30s backoff) then `failed`.
 **Consequence.** Lease/dedupe stay transactional with chunk data; no new infra. Revisit
 under load per spec (Redis/RQ) — the JobQueue interface is the seam.
+
+## ADR-0008 — Extraction verdicts: model JSON with deterministic fallback (2026-07-06, M2-4)
+
+**Context.** C2.3 deep-score/entity extraction uses `hint:fast` model calls, but dev/CI
+run with MOCK_PROVIDERS=true whose completions are deterministic non-JSON strings; tests
+must assert lifecycle structure, not prose (standards §4).
+**Decision.** The extractor always asks the gateway for a JSON verdict
+(`{"score", "entities"}`) and parses it; when parsing fails it falls back to a
+deterministic heuristic (lexical-richness score + capitalized-phrase entities). Mock mode
+therefore always exercises the fallback; real providers (post-gate) supply real verdicts
+through the same parse path, which is unit-tested with valid JSON.
+**Consequence.** Lifecycle transitions (`admitted`/`dropped` at threshold 0.3) are fully
+testable in CI. Heuristic quality is placeholder-grade; verdict quality improves the
+moment a real provider is enabled, with no code change in the extractor.

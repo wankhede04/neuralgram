@@ -21,6 +21,7 @@ class PersistResult(BaseModel):
 
     inserted: int
     skipped: int
+    inserted_ids: list[str] = []
 
 
 class ContentStore:
@@ -63,7 +64,11 @@ class ContentStore:
                 path.unlink(missing_ok=True)
             raise
 
-        return PersistResult(inserted=len(inserted_ids), skipped=len(drafts) - len(inserted_ids))
+        return PersistResult(
+            inserted=len(inserted_ids),
+            skipped=len(drafts) - len(inserted_ids),
+            inserted_ids=sorted(inserted_ids),
+        )
 
     async def _insert_rows(self, session: AsyncSession, drafts: list[ChunkDraft]) -> set[str]:
         statement = (
