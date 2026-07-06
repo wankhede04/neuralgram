@@ -2,7 +2,7 @@
 
 ## Now
 - Phase/Milestone: **M5 — Hardening**
-- Task in flight: **M5-3 GDPR erasure** (next unchecked backlog item)
+- Task in flight: **M5-4 Dashboards & alerts (C8)** (next unchecked backlog item)
 - Last CI: remote CI green on main through M4-5 (run 28792392742)
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M5-3 done: ErasureService cascades chunks→scores(embeddings)→chunk_entities→entities→summaries→vault files→referencing jobs in one txn + vault sweep; usage/audit records retained (billing/security). POST /admin/erase (admin role, own tenant only). Test seeds full pipeline via API for two tenants, erases one: zero residue anywhere, neighbor untouched.
 - 2026-07-06 — M5-2 done: roles reader<writer<admin per API key (default writer); ingest requires writer (403 otherwise); audit_events table (migration 0006, RLS'd) written by middleware for every /memory + /admin request incl. denials, actor = key fingerprint (raw keys never stored); GET /admin/audit (admin role, tenant-scoped, cross-tenant blind). 5 integration tests.
 - 2026-07-06 — M4 exit gate confirmed on remote CI (run 28796254055 success). Milestone advanced to M5 (D1=organizational).
 - 2026-07-06 — M5-1 done: fail-closed Postgres RLS on all six tenant tables (migration 0005 also adds tenant_id to scores/chunk_entities); tenant GUC sessions on API reads, system-context sessions for workers; negative tests with a NON-superuser role prove no-context→nothing, tenant-A→A-only (even raw SQL), system→all (ADR-0014).

@@ -65,7 +65,7 @@ Legend: `Dep:` must be done first · `Gate:` triggers a human gate (BUILD-LOOP �
 
 - [x] **M5-1 Tenancy model** *(Postgres RLS fail-closed, ADR-0014)* — implement isolation per D1 (RLS / schema-per-tenant / db-per-tenant). *AC:* **negative test** — tenant A cannot read tenant B under any endpoint. *Dep:* D1 resolved.
 - [x] **M5-2 RBAC + audit** — roles; audit log of who queried whose memory. *AC:* unauthorized access denied + logged; audit query returns trail. *Dep:* M5-1.
-- [ ] **M5-3 GDPR erasure** — cascade delete across chunks/scores/entities/summaries/vault. *AC:* erasure test leaves no residue anywhere, including embeddings. *Dep:* M5-1.
+- [x] **M5-3 GDPR erasure** — cascade delete across chunks/scores/entities/summaries/vault. *AC:* erasure test leaves no residue anywhere, including embeddings. *Dep:* M5-1.
 - [ ] **M5-4 Dashboards & alerts (C8)** — ingest, queue depth, latency SLO, cost/tenant; alerts. *AC:* **chaos test** — induce failure, alert fires. *Dep:* C8 skeleton.
 - [ ] **M5-5 Secrets hardening** — move to secret manager; rotation doc. *AC:* no secrets in repo/scan; rotation rehearsed. 
 

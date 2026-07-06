@@ -1,5 +1,7 @@
-"""Admin routes (C7, M5-2): audit-trail queries, admin role only, tenant-scoped."""
+"""Admin routes (C7): audit-trail queries and GDPR erasure — admin role only,
+always scoped to the caller's own tenant."""
 
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -8,6 +10,7 @@ from sqlalchemy import desc, select
 
 from neuralgram.api.deps import require_role
 from neuralgram.common.db import tenant_session
+from neuralgram.memory.erasure import ErasureReport, ErasureService
 from neuralgram.storage.models import AuditEvent
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -56,3 +59,16 @@ async def audit_endpoint(
         )
         for row in rows
     ]
+
+
+@router.post("/erase", response_model=ErasureReport)
+async def erase_endpoint(tenant_id: AdminTenant, request: Request) -> ErasureReport:
+    """GDPR erasure of the caller's own tenant: cascade delete of all memory.
+
+    Irreversible. Usage and audit records are retained (billing/security).
+    """
+    service = ErasureService(
+        request.app.state.system_session_factory,
+        Path(request.app.state.settings.vault_path),
+    )
+    return await service.erase_tenant(tenant_id)
