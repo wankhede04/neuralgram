@@ -1,9 +1,9 @@
 # Neuralgram — Progress
 
 ## Now
-- Phase/Milestone: **M2 — Enrichment (complete, pending remote CI confirmation)**
-- Task in flight: **M3-1 Source tree seal cascade** (next after M2 exit confirms)
-- Last CI: local gate fully green through M2-5; awaiting remote CI on main for M2 exit
+- Phase/Milestone: **M3 — Memory trees**
+- Task in flight: **M3-2 Hotness + topic routing** (next unchecked backlog item)
+- Last CI: remote CI green on main (M2 exit gate passed); local gate green for M3-1
 
 ## Blocked
 - none
@@ -19,6 +19,8 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M2 exit gate confirmed on remote CI (run 28785512852 success). Milestone advanced to M3.
+- 2026-07-06 — M3-1 done: SourceTree — admitted→buffered→sealed lifecycle, buffer-full seal to L1, recursive cascade to L2+ via sealed_at consumption, flush_stale for partial buffers; deterministic children-digest marker. Coverage bar moved to combined pyramid measurement (ADR-0010), now 97%.
 - 2026-07-06 — M2-5 done; **M2 exit criteria met locally**: crash-recovery proven (M2-2), semantic+hybrid beat keyword on labeled eval (recall@1), queue dedupe/lease tested (M2-1). Mock embeddings upgraded to feature-hashed BoW (ADR-0009); hybrid search = RRF fusion; /memory/search gains mode=keyword|semantic|hybrid.
 - 2026-07-06 — M2-4 done: extract_chunk job — C3-compressed input, gateway JSON verdict with deterministic heuristic fallback (ADR-0008), embedding persisted, entities+links written, lifecycle → admitted/dropped (threshold 0.3); dropped rows retain provenance. Ingest enqueues jobs + wakes pool; app lifespan runs the pool. Worker ack/fail now shielded from cancellation (graceful-stop race found by test).
 - 2026-07-06 — M2-3 done: embed path — gateway embeddings persisted to scores.embedding (pgvector) via upsert; cosine-distance NN query proven; provider contract test suite (mock now, real adapters must join in M4-2). No real provider enabled (cost gate intact).

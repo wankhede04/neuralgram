@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from neuralgram.compression.engine import compress
 from neuralgram.memory.embeddings import persist_embeddings
+from neuralgram.memory.queue import JobQueue
 from neuralgram.observability.logging import get_logger
 from neuralgram.router.gateway import Message, ModelGateway
 from neuralgram.storage.models import Chunk, ChunkEntity, Entity, Score
@@ -82,10 +83,12 @@ class Extractor:
         session_factory: async_sessionmaker[AsyncSession],
         gateway: ModelGateway,
         admit_threshold: float = ADMIT_THRESHOLD,
+        queue: JobQueue | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._gateway = gateway
         self._admit_threshold = admit_threshold
+        self._queue = queue
 
     async def extract_chunk(self, payload: dict[str, Any]) -> None:
         """Handler for `extract_chunk` jobs; payload = {"chunk_id": ...}."""
@@ -116,6 +119,8 @@ class Extractor:
             )
             await session.commit()
             logger.info("extract.done", chunk_id=chunk_id, lifecycle=lifecycle, score=verdict.score)
+        if lifecycle == "admitted" and self._queue is not None:
+            await self._queue.enqueue("append_buffer", {"chunk_id": chunk_id}, f"buffer:{chunk_id}")
 
     async def _link_entities(
         self, session: AsyncSession, chunk: Chunk, verdict: ExtractionVerdict

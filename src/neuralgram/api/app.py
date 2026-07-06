@@ -13,6 +13,7 @@ from neuralgram.common.db import build_engine, build_session_factory
 from neuralgram.memory.extraction import Extractor
 from neuralgram.memory.queue import JobQueue
 from neuralgram.memory.store import ContentStore
+from neuralgram.memory.trees import SourceTree
 from neuralgram.memory.workers import WorkerPool
 from neuralgram.observability.logging import configure_logging
 from neuralgram.observability.metrics import metrics_app
@@ -30,8 +31,16 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.content_store = ContentStore(app.state.session_factory, Path(settings.vault_path))
     app.state.queue = JobQueue(app.state.session_factory)
     app.state.gateway = build_gateway(settings)
-    extractor = Extractor(app.state.session_factory, app.state.gateway)
-    app.state.worker_pool = WorkerPool(app.state.queue, {"extract_chunk": extractor.extract_chunk})
+    extractor = Extractor(app.state.session_factory, app.state.gateway, queue=app.state.queue)
+    tree = SourceTree(app.state.session_factory, app.state.gateway)
+    app.state.worker_pool = WorkerPool(
+        app.state.queue,
+        {
+            "extract_chunk": extractor.extract_chunk,
+            "append_buffer": tree.append_buffer,
+            "flush_stale": tree.flush_stale,
+        },
+    )
     await app.state.worker_pool.start()
     try:
         yield

@@ -111,3 +111,16 @@ retrieval fuses keyword and vector results via reciprocal rank fusion (k=60).
 and hybrid beat keyword recall@1). BoW captures lexical overlap only, not true
 semantics — the fixture eval must be re-run when a real embedding provider is enabled
 (M4-2) to revalidate with genuine semantic vectors.
+
+## ADR-0010 — Coverage bar measured across the full test pyramid (2026-07-06, M3-1)
+
+**Context.** BUILD-LOOP §5 puts "≥85% coverage on core packages" at the Unit gate. As DB-
+orchestration modules grew (store, queue, trees), holding the bar with unit tests alone
+forced scripted-mock duplicates of behavior already proven on real Postgres — brittle
+tests that mock the very interactions that matter, against the spirit of §10.
+**Decision.** Coverage accumulates across unit + integration + e2e (`--cov-append`) and
+a dedicated `make coverage-check` enforces ≥85%; `make test` and the CI integration
+stage run it. Unit stage remains a fast 100%-pass signal.
+**Consequence.** The numeric bar is unchanged and still blocks merges, but is satisfied
+by tests that exercise real infrastructure. Pure-logic modules (chunker, compression,
+router, hotness math) are still expected to be unit-covered.

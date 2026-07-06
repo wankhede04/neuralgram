@@ -50,7 +50,8 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen
-      - run: make test-int test-e2e
+      # Full pyramid with the combined coverage bar (ADR-0010).
+      - run: make test
 
   migrations:
     runs-on: ubuntu-latest
