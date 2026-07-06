@@ -2,7 +2,7 @@
 
 ## Now
 - Phase/Milestone: **M1 — Spine**
-- Task in flight: **M1-4 Content store + hot-path persist** (next unchecked backlog item)
+- Task in flight: **M1-5 Deterministic compression (C3)** (next unchecked backlog item)
 - Last CI: remote CI green on main (P0 exit gate passed); local gate green for M1-1
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M1-4 done: ContentStore persists chunk rows + vault .md files in one transaction; ON CONFLICT DO NOTHING on content_hash makes re-ingest idempotent; partial-failure integration test proves no dangling rows or files (rollback + file cleanup). Hot path stays LLM-free.
 - 2026-07-06 — M1-3 done: deterministic chunker, ≤max_tokens splits (paragraph-first, whitespace-preferring hard split), content-addressed IDs = sha256(tenant_id + normalized content) (ADR-0005). Hypothesis property tests: idempotent IDs, zero new IDs on re-ingest, cross-tenant non-collision, budget respected, multibyte intact.
 - 2026-07-06 — M1-2 done: C1 canonicalizer with pluggable normalizer registry; Slack export shape first (ADR-0004 — all-thing-eye unavailable, human approved). Provenance (source/author/timestamp/id/url) attached and embedded in body_md; multibyte preserved; empty messages skipped.
 - 2026-07-06 — P0 exit gate passed (remote CI green: all 7 stages incl. migrations up/down + image boot probe). Phase advanced to M1.

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     database_url: str = f"postgresql+asyncpg://{_DEV_DB_CREDENTIALS}@localhost:5432/neuralgram"
     redis_url: str = "redis://localhost:6379/0"
+    vault_path: str = "./vault"
 
 
 @lru_cache
