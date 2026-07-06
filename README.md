@@ -29,3 +29,5 @@ uv run uvicorn neuralgram.api.app:app --reload
 
 Dev/CI run with `MOCK_PROVIDERS=true`; no real model-provider keys are required
 until explicitly enabled (human gate).
+
+<!-- CI verification: trivial change (P0-3 AC) -->
