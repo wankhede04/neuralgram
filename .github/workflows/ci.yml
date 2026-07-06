@@ -50,7 +50,7 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen
-      - run: make test-int
+      - run: make test-int test-e2e
 
   migrations:
     runs-on: ubuntu-latest
