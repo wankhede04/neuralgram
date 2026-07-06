@@ -1,19 +1,17 @@
 # Neuralgram — Progress
 
 ## Now
-- Phase/Milestone: **M4 — Routing & margin (all unblocked tasks complete; M4-2 + exit gate BLOCKED on D3)**
-- Task in flight: **HALTED — awaiting human decisions (D3 for M4-2/M4 exit; D1 for M5)**
-- Last CI: local gate fully green through M4-5; remote CI green through M4-4 push
+- Phase/Milestone: **M4 — Routing & margin**
+- Task in flight: **M4-2 Provider adapters + failover** (unblocked by D3=allowed)
+- Last CI: remote CI green on main through M4-5 (run 28792392742)
 
 ## Blocked
-- **M4-2 Provider adapters + failover** — human gate: D3 (one-account brokering legality) is *pending* and each real provider is an external-cost gate. All other M4 tasks are done; the M4 exit gate (provider failover test + margin re-validation with real providers) cannot pass until D3 is resolved and a human approves provider enablement.
-- **M5 (all tasks)** — human gate: D1 (memory ownership) is *unset*; M5 must not start until it is resolved.
-- **Loop halted here.** Next human actions: (1) resolve D3 → unblocks M4-2 and the M4 exit gate; (2) resolve D1 → unblocks M5. Record decisions in DECISIONS.md, then re-run the loop.
+- Enabling a *real* provider account (API keys, spend) remains an external-cost gate — M4-2 ships adapters/failover proven against contract mock servers; activation is a human config step.
 
 ## Governing decisions
-- D1 memory ownership: **unset** — not required until M5; do NOT start M5 tasks until resolved.
+- D1 memory ownership: **organizational** (resolved 2026-07-06, ADR-0013) — org-level tenancy; C7 isolation/RBAC/audit per org lens.
 - D2 model hosting: **hybrid (working default)** — CI/dev run with `MOCK_PROVIDERS=true`; enabling any real provider is an external-cost gate.
-- D3 brokering legality: **pending** — required before M4-2 (real provider adapters); halt there if still pending.
+- D3 brokering legality: **allowed** (resolved 2026-07-06, ADR-0013) — brokered billing permitted; BYO-key still supported by design.
 
 ## Environment prerequisites (human to confirm before iteration 1)
 - [ ] Git repo initialized; the four spec docs + this file + DECISIONS.md committed.

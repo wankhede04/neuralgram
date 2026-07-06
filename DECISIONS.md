@@ -159,3 +159,16 @@ repeats compound it. The ≥50% bar is enforced on every CI run.
 **Caveat.** Prices for mock models mirror realistic tier ratios but real-provider
 token counts differ from the 4-chars/token estimate. Re-run this validation with real
 providers once M4-2 unblocks (D3) — it is a condition of the M4 exit gate sign-off.
+
+## ADR-0013 — Governing decisions D1 and D3 resolved (2026-07-06)
+
+**Context.** The loop halted after M4-5: M4-2 gated on D3, all of M5 gated on D1.
+**Decision (human).** **D3 = allowed** — one-account brokering is legally cleared; the
+router may serve multiple tenants through Neuralgram-owned provider accounts.
+**D1 = organizational** — memory belongs to the organization (shared, management lens);
+tenancy is org-level, and C7 must implement org-tenant isolation, RBAC and audit
+accordingly, with GDPR/employee-monitoring obligations applying.
+**Consequence.** M4-2 and M5 are unblocked. Enabling any *real* provider account still
+requires the external-cost gate (API keys + human spend approval): M4-2 ships adapters,
+health checks and failover proven against contract-test mock servers, with real-key
+activation as a config step. D1=organizational drives the M5-1 isolation model choice.
