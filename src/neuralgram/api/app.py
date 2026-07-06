@@ -4,7 +4,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from neuralgram import __version__
 from neuralgram.api.routes_memory import router as memory_router
@@ -22,6 +23,7 @@ from neuralgram.observability.metrics import metrics_app
 from neuralgram.observability.middleware import RequestContextMiddleware
 from neuralgram.observability.tracing import instrument_app, setup_tracing
 from neuralgram.router.gateway import build_gateway
+from neuralgram.router.metering import SpendCapExceededError, UsageMeter
 
 
 @asynccontextmanager
@@ -32,7 +34,9 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.session_factory = build_session_factory(engine)
     app.state.content_store = ContentStore(app.state.session_factory, Path(settings.vault_path))
     app.state.queue = JobQueue(app.state.session_factory)
-    app.state.gateway = build_gateway(settings)
+    meter = UsageMeter(app.state.session_factory, settings.tenant_spend_caps)
+    app.state.meter = meter
+    app.state.gateway = build_gateway(settings, meter)
     extractor = Extractor(app.state.session_factory, app.state.gateway, queue=app.state.queue)
     tree = SourceTree(app.state.session_factory, app.state.gateway)
     topics = TopicRouter(app.state.session_factory, app.state.gateway)
@@ -73,6 +77,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="Neuralgram", version=__version__, lifespan=_lifespan)
     app.state.settings = settings
     app.add_middleware(RequestContextMiddleware)
+
+    @app.exception_handler(SpendCapExceededError)
+    async def _spend_cap_handler(request: Request, exc: SpendCapExceededError) -> JSONResponse:
+        return JSONResponse(status_code=429, content={"detail": str(exc)})
+
     app.mount("/metrics", metrics_app())
     app.include_router(memory_router)
 

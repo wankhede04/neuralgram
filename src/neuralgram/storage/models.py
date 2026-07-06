@@ -5,6 +5,7 @@
 """
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, ClassVar
 
 from pgvector.sqlalchemy import Vector
@@ -14,6 +15,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -103,6 +105,22 @@ class Summary(Base):
     body_md: Mapped[str] = mapped_column(Text)
     child_ids: Mapped[dict[str, Any]] = mapped_column()
     sealed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class UsageEvent(Base):
+    """One metered model call: tokens and cost attributed to a tenant (C4/C8)."""
+
+    __tablename__ = "usage_events"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    provider: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(128))
+    hint: Mapped[str | None] = mapped_column(String(32))
+    tokens_in: Mapped[int] = mapped_column(Integer)
+    tokens_out: Mapped[int] = mapped_column(Integer)
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Job(Base):

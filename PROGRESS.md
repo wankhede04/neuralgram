@@ -2,11 +2,11 @@
 
 ## Now
 - Phase/Milestone: **M4 — Routing & margin**
-- Task in flight: **M4-2 Provider adapters + failover** — GATED on D3 (pending) + external cost; expect escalation
+- Task in flight: **M4-4 Prompt/response caching** (M4-2 remains blocked on D3)
 - Last CI: remote CI green on main (M3 exit gate passed); local gate green for M4-1
 
 ## Blocked
-- none
+- **M4-2 Provider adapters + failover** — human gate: D3 (one-account brokering legality) is *pending* and each real provider is an external-cost gate. Skipped per standing rules; M4-3/M4-4/M4-5 proceed (unblocked). The M4 exit gate (provider failover test) cannot pass until D3 is resolved and a human approves provider enablement.
 
 ## Governing decisions
 - D1 memory ownership: **unset** — not required until M5; do NOT start M5 tasks until resolved.
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M4-3 done: usage_events table (migration 0004) + UsageMeter — price-table cost math, per-tenant attribution, hard caps checked pre-flight (cap trip blocks complete+embed, other tenants unaffected); gateway complete/embed take tenant_id, all pipeline callers pass it; Prometheus tokens/cost counters by tenant+hint; API maps cap trips to 429. M4-2 skipped (BLOCKED on D3).
 - 2026-07-06 — M3 exit gate confirmed on remote CI (run 28786768778 success). Milestone advanced to M4.
 - 2026-07-06 — M4-1 done: RouteTable for all six hints with runtime remap + concrete-name fallthrough to default provider; gateway dispatches complete/embed through the table across a provider-adapter registry. Resolution unit-tested per hint, fallthrough, remap, unknown-hint/provider errors.
 - 2026-07-06 — M3-5 done; **M3 exit criteria met locally**: deterministic seal-cascade tests (M3-1), topic tree gated by hotness threshold (M3-2), daily digest scheduled + idempotent (M3-3), tree-scoped retrieval (M3-4), bounded-cost benchmark documented in ADR-0011 (tokens/chunk flat at 13.8–14.0 across 4× data; retrieval sub-linear).

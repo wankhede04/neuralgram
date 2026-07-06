@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # High budget: deterministic clean-up only on ingest; no lossy truncation.
     ingest_compress_budget_tokens: int = 100_000
 
+    # Hard per-tenant spend caps in USD (env TENANT_SPEND_CAPS, JSON). No entry = no cap.
+    tenant_spend_caps: dict[str, float] = {}
+
 
 @lru_cache
 def get_settings() -> Settings:
