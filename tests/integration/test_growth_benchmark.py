@@ -98,7 +98,7 @@ async def _grow_tenant(async_url: str, tenant: str, count: int) -> tuple[float, 
             )
             await session.commit()
             vector = (await gateway.embed([content]))[0]
-            await persist_embeddings(session, {chunk_id: vector})
+            await persist_embeddings(session, {chunk_id: vector}, tenant)
             await session.commit()
         await tree.append_buffer({"chunk_id": chunk_id})
 

@@ -75,7 +75,7 @@ def label_by_chunk(async_url: str, tmp_path_factory: pytest.TempPathFactory) -> 
             await store.persist(drafts)
             vector = (await gateway.embed([drafts[0].content_md]))[0]
             async with factory() as session:
-                await persist_embeddings(session, {drafts[0].id: vector})
+                await persist_embeddings(session, {drafts[0].id: vector}, TENANT)
                 await session.commit()
             mapping[drafts[0].id] = doc["label"]
         await engine.dispose()

@@ -172,3 +172,21 @@ accordingly, with GDPR/employee-monitoring obligations applying.
 requires the external-cost gate (API keys + human spend approval): M4-2 ships adapters,
 health checks and failover proven against contract-test mock servers, with real-key
 activation as a config step. D1=organizational drives the M5-1 isolation model choice.
+
+## ADR-0014 — Tenant isolation: Postgres RLS, fail-closed (2026-07-06, M5-1)
+
+**Context.** D1 = organizational (ADR-0013) requires enforced org-tenant isolation.
+Options per spec C7: RLS / schema-per-tenant / DB-per-tenant. Human review chose RLS.
+**Decision.** Row-level security enabled and FORCED on all tenant tables (`chunks`,
+`scores`, `entities`, `chunk_entities`, `summaries`, `usage_events`; `scores` and
+`chunk_entities` gained `tenant_id` in migration 0005 per standards §8). Policy is
+fail-closed: rows are visible only when the transaction sets
+`neuralgram.tenant_id = <tenant>` (API read paths via `tenant_session`) or
+`neuralgram.context = 'system'` (trusted worker paths via the system session factory).
+The repository-layer scoping from P0-5 remains as the first line of defense.
+**Consequence.** Even raw SQL from a request-scoped session cannot cross tenants
+(negative tests prove no-context → zero rows; tenant-A context → A only; system → all).
+**Operational requirement:** the production app must connect as a NON-superuser role
+without BYPASSRLS — superusers skip RLS entirely. The dev compose user is the DB owner
+(FORCE RLS still applies), but prod provisioning must create a dedicated app role;
+tracked for the R-4 runbook and M5-5 secrets hardening.
