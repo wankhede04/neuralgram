@@ -124,3 +124,21 @@ stage run it. Unit stage remains a fast 100%-pass signal.
 **Consequence.** The numeric bar is unchanged and still blocks merges, but is satisfied
 by tests that exercise real infrastructure. Pure-logic modules (chunker, compression,
 router, hotness math) are still expected to be unit-covered.
+
+## ADR-0011 — M3-5 growth benchmark: cost is bounded (2026-07-06)
+
+**Context.** M3 exit requires documented proof that retrieval/summarization cost stays
+bounded as history grows (tree structure should amortize summarization; indexes should
+keep retrieval sub-linear).
+**Decision / Result.** Benchmark (`tests/integration/test_growth_benchmark.py`; source
+tree buffer=8, cascade=4, mock gateway, real Postgres+pgvector) at corpus sizes
+64/128/256 chunks:
+- Summarize-call input tokens per ingested chunk: **13.81 / 13.95 / 13.95** — flat as
+  the corpus quadruples (seals are bounded by buffer size; cascade overhead amortizes).
+- Hybrid (keyword+vector RRF) search latency: **4.4ms / 5.6ms / 7.8ms** — ~1.8× for 4×
+  data, sub-linear.
+The test enforces both properties on every CI run (≤1.5× tokens/chunk drift, ≤3×
+latency at 4× data).
+**Consequence.** M3 cost-boundedness is proven and continuously guarded. Re-measure at
+production volumes during R-1 load testing; revisit pgvector indexing (IVFFlat/HNSW)
+if latency growth approaches the cap.

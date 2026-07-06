@@ -1,9 +1,9 @@
 # Neuralgram — Progress
 
 ## Now
-- Phase/Milestone: **M3 — Memory trees**
-- Task in flight: **M3-5 Cost-bounded growth benchmark** (next unchecked backlog item)
-- Last CI: remote CI green on main (M2 exit gate passed); local gate green for M3-1
+- Phase/Milestone: **M3 — Memory trees (complete, pending remote CI confirmation)**
+- Task in flight: **M4-1 Full hint routing** (next after M3 exit confirms)
+- Last CI: local gate fully green through M3-5; awaiting remote CI on main for M3 exit
 
 ## Blocked
 - none
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M3-5 done; **M3 exit criteria met locally**: deterministic seal-cascade tests (M3-1), topic tree gated by hotness threshold (M3-2), daily digest scheduled + idempotent (M3-3), tree-scoped retrieval (M3-4), bounded-cost benchmark documented in ADR-0011 (tokens/chunk flat at 13.8–14.0 across 4× data; retrieval sub-linear).
 - 2026-07-06 — M3-4 done: TreeRetrieval (tenant-scoped) — drill_down (source tree, root-first, level filter), topic (entity nodes), global_digest (per day); child_ids preserve the provenance chain; GET /memory/summaries exposes all three scopes. Cross-tenant blindness tested per scope.
 - 2026-07-06 — M3-3 done: DigestBuilder — one global node per (tenant, day), refreshed on re-run, none for empty days; DigestScheduler sleeps to 00:00 UTC and enqueues digest_daily per active tenant, idempotent via queue dedupe (tick twice → 0 new). Wired into lifespan + worker pool.
 - 2026-07-06 — M3-2 done: hotness = Σ 0.5^(age/half-life) (pure, unit-tested incl. half-life property); TopicRouter recomputes hotness per mention and materializes/refreshes a topic tree node only above threshold 3.0 (cold entities: hotness stored, no node). Extraction enqueues topic_route per linked entity.

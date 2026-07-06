@@ -47,7 +47,7 @@ Legend: `Dep:` must be done first · `Gate:` triggers a human gate (BUILD-LOOP �
 - [x] **M3-2 Hotness + topic routing** — `hotness = Σ mentions × recency_decay`; `topic_route` gated by threshold. *AC:* topic tree materializes only above threshold; hotness math unit-tested. *Dep:* M3-1.
 - [x] **M3-3 Global daily digest** — scheduler enqueues `digest_daily` at 00:00 UTC. *AC:* digest node built for a simulated day; scheduler idempotent. *Dep:* M3-1.
 - [x] **M3-4 Tree-scoped retrieval** — `drill_down`, `topic`, `global`. *AC:* each scope returns correct summaries with provenance. *Dep:* M3-2, M3-3.
-- [ ] **M3-5 Cost-bounded growth benchmark** — measure retrieval/summarization cost as data grows. *AC:* documented benchmark shows bounded cost; written to DECISIONS.md. *Dep:* M3-4.
+- [x] **M3-5 Cost-bounded growth benchmark** — measure retrieval/summarization cost as data grows. *AC:* documented benchmark shows bounded cost; written to DECISIONS.md. *Dep:* M3-4.
 
 **Exit:** BUILD-LOOP §7 M3 gate.
 
