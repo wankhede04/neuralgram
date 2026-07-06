@@ -53,7 +53,7 @@ Legend: `Dep:` must be done first · `Gate:` triggers a human gate (BUILD-LOOP �
 
 ## M4 — Routing & margin  *(C4 full)*
 
-- [ ] **M4-1 Full hint routing** — route table for `reasoning/fast/vision/summarize/code/embed`; runtime remap; concrete-name fallthrough. *AC:* resolution unit-tested for each hint + fallthrough. *Dep:* M2-3.
+- [x] **M4-1 Full hint routing** — route table for `reasoning/fast/vision/summarize/code/embed`; runtime remap; concrete-name fallthrough. *AC:* resolution unit-tested for each hint + fallthrough. *Dep:* M2-3.
 - [ ] **M4-2 Provider adapters + failover** — ≥2 providers; health checks; automatic failover + retry/backoff. `Gate:` each real provider = external-cost + legality (D3). *AC:* failover test (primary down → secondary serves). *Dep:* M4-1.
 - [ ] **M4-3 Per-tenant metering & spend caps** — real-time usage accounting; hard caps. *AC:* cap trips and blocks further spend in a test; usage attributed per tenant. *Dep:* M4-1, C8.
 - [ ] **M4-4 Prompt/response caching** — cache layer over gateway. *AC:* cache hit measured; correctness preserved. *Dep:* M4-1.

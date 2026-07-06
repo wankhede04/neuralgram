@@ -18,7 +18,7 @@ async def test_mock_complete_is_deterministic() -> None:
     assert first == second
     assert first.provider == "mock"
     assert first.usage.tokens_in == 2
-    assert first.text.startswith("[mock:hint:fast:")
+    assert first.text.startswith("[mock:mock-fast:"), "provider sees the resolved model name"
 
 
 async def test_mock_complete_varies_with_input() -> None:

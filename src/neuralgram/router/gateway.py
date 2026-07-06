@@ -10,6 +10,8 @@ from typing import Protocol
 from pydantic import BaseModel
 
 from neuralgram.common.config import Settings
+from neuralgram.common.errors import RoutingError
+from neuralgram.router.routing import RouteTable, mock_route_table
 
 
 class Message(BaseModel):
@@ -97,18 +99,36 @@ class MockProvider:
 
 
 class ModelGateway:
-    """Routes `complete`/`embed` calls to the configured provider."""
+    """Routes `complete`/`embed` through the hint table to provider adapters (C4)."""
 
-    def __init__(self, provider: ModelProvider) -> None:
-        self._provider = provider
+    def __init__(
+        self,
+        providers: dict[str, ModelProvider],
+        route_table: RouteTable,
+    ) -> None:
+        self._providers = providers
+        self._route_table = route_table
+
+    @property
+    def route_table(self) -> RouteTable:
+        """The live route table (remappable at runtime)."""
+        return self._route_table
+
+    def _provider_for(self, name: str) -> ModelProvider:
+        provider = self._providers.get(name)
+        if provider is None:
+            raise RoutingError(f"no provider adapter registered as {name!r}")
+        return provider
 
     async def complete(self, messages: list[Message], model_or_hint: str) -> CompletionResult:
-        """Generate a completion via the active provider."""
-        return await self._provider.complete(messages, model_or_hint)
+        """Resolve `model_or_hint` and generate a completion on the routed provider."""
+        resolution = self._route_table.resolve(model_or_hint)
+        return await self._provider_for(resolution.provider).complete(messages, resolution.model)
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts via the active provider."""
-        return await self._provider.embed(texts)
+        """Embed texts via the provider routed for `hint:embed`."""
+        resolution = self._route_table.resolve("hint:embed")
+        return await self._provider_for(resolution.provider).embed(texts)
 
 
 def build_gateway(settings: Settings) -> ModelGateway:
@@ -122,4 +142,7 @@ def build_gateway(settings: Settings) -> ModelGateway:
             "Real model providers are not available: enabling them is a human gate "
             "(external cost / D3). Set MOCK_PROVIDERS=true."
         )
-    return ModelGateway(MockProvider(embedding_dim=settings.embedding_dim))
+    providers: dict[str, ModelProvider] = {
+        "mock": MockProvider(embedding_dim=settings.embedding_dim)
+    }
+    return ModelGateway(providers, RouteTable(mock_route_table(), default_provider="mock"))

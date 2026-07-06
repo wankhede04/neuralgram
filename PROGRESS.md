@@ -1,9 +1,9 @@
 # Neuralgram — Progress
 
 ## Now
-- Phase/Milestone: **M3 — Memory trees (complete, pending remote CI confirmation)**
-- Task in flight: **M4-1 Full hint routing** (next after M3 exit confirms)
-- Last CI: local gate fully green through M3-5; awaiting remote CI on main for M3 exit
+- Phase/Milestone: **M4 — Routing & margin**
+- Task in flight: **M4-2 Provider adapters + failover** — GATED on D3 (pending) + external cost; expect escalation
+- Last CI: remote CI green on main (M3 exit gate passed); local gate green for M4-1
 
 ## Blocked
 - none
@@ -19,6 +19,8 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M3 exit gate confirmed on remote CI (run 28786768778 success). Milestone advanced to M4.
+- 2026-07-06 — M4-1 done: RouteTable for all six hints with runtime remap + concrete-name fallthrough to default provider; gateway dispatches complete/embed through the table across a provider-adapter registry. Resolution unit-tested per hint, fallthrough, remap, unknown-hint/provider errors.
 - 2026-07-06 — M3-5 done; **M3 exit criteria met locally**: deterministic seal-cascade tests (M3-1), topic tree gated by hotness threshold (M3-2), daily digest scheduled + idempotent (M3-3), tree-scoped retrieval (M3-4), bounded-cost benchmark documented in ADR-0011 (tokens/chunk flat at 13.8–14.0 across 4× data; retrieval sub-linear).
 - 2026-07-06 — M3-4 done: TreeRetrieval (tenant-scoped) — drill_down (source tree, root-first, level filter), topic (entity nodes), global_digest (per day); child_ids preserve the provenance chain; GET /memory/summaries exposes all three scopes. Cross-tenant blindness tested per scope.
 - 2026-07-06 — M3-3 done: DigestBuilder — one global node per (tenant, day), refreshed on re-run, none for empty days; DigestScheduler sleeps to 00:00 UTC and enqueues digest_daily per active tenant, idempotent via queue dedupe (tick twice → 0 new). Wired into lifespan + worker pool.
