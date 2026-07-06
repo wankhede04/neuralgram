@@ -11,3 +11,7 @@ class MissingTenantScopeError(NeuralgramError):
 
 class UnsupportedSourceError(NeuralgramError):
     """An ingest payload arrived for a source_type with no registered normalizer."""
+
+
+class RoutingError(NeuralgramError):
+    """A model_or_hint string could not be resolved to a provider/model."""
