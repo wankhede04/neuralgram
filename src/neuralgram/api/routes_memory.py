@@ -1,5 +1,6 @@
 """Memory API routes (C5): ingest, search, fetch — all tenant-scoped."""
 
+from datetime import date
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -11,6 +12,7 @@ from neuralgram.compression.engine import compress
 from neuralgram.ingestion.canonicalize import ingest as canonicalize
 from neuralgram.memory.chunker import chunk
 from neuralgram.memory.retrieval import ChunkRetrieval, RetrievedChunk
+from neuralgram.memory.tree_retrieval import SummaryNode, TreeRetrieval
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -85,6 +87,33 @@ async def search_endpoint(
         if mode == "semantic":
             return await retrieval.semantic_search(session, query_vector, limit)
         return await retrieval.hybrid_search(session, q, query_vector, limit)
+
+
+@router.get("/summaries", response_model=list[SummaryNode])
+async def summaries_endpoint(
+    tenant_id: Tenant,
+    request: Request,
+    tree: Literal["source", "topic", "global"],
+    scope_id: Annotated[str, Query(min_length=1)],
+    level: Annotated[int | None, Query(ge=1)] = None,
+) -> list[SummaryNode]:
+    """Tree-scoped retrieval: drill_down (source), topic (entity), global (day)."""
+    factory = request.app.state.session_factory
+    retrieval = TreeRetrieval(tenant_id)
+    async with factory() as session:
+        if tree == "source":
+            return await retrieval.drill_down(session, scope_id, level)
+        if tree == "topic":
+            return await retrieval.topic(session, scope_id)
+        try:
+            day = date.fromisoformat(scope_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="global scope_id must be YYYY-MM-DD",
+            ) from exc
+        node = await retrieval.global_digest(session, day)
+        return [node] if node else []
 
 
 @router.get("/chunks/{chunk_id}", response_model=RetrievedChunk)
