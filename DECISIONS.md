@@ -21,3 +21,16 @@ locally and in CI without extra system-level installs.
 environment. Both are pip-installable, so the gate is reproducible anywhere Python runs.
 **Consequence.** New secrets fail the gate; known false positives are audited into the
 baseline. High/critical advisories in dependencies block commits until resolved or pinned.
+
+## ADR-0003 — Merge discipline without GitHub branch protection (2026-07-06, P0-3)
+
+**Context.** The remote repo was made private to protect internal product docs. GitHub
+branch protection (required status checks) is not available on free-plan private repos
+(HTTP 403 on the protection API), so a red PR is not hard-blocked from merging by GitHub.
+**Decision.** Keep the repo private. CI runs all gates on every PR and on `main`; merge
+discipline ("no merge unless all stages green", standards §5) is enforced by the build
+loop's own rules rather than a GitHub setting. Revisit when the repo moves to an org or
+paid plan — then enable required status checks for all seven CI jobs.
+**Consequence.** The P0-3 criterion "a deliberately failing test blocks merge" is
+satisfied procedurally (red check demonstrated on a verification PR, closed unmerged),
+not mechanically. Risk of accidental red merges rests on process until protection is enabled.
