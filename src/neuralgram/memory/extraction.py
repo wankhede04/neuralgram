@@ -108,12 +108,13 @@ class Extractor:
             embedding = (await self._gateway.embed([compressed.text]))[0]
 
             lifecycle = "admitted" if verdict.score >= self._admit_threshold else "dropped"
+            linked_entity_ids: list[str] = []
             await persist_embeddings(session, {chunk_id: embedding})
             await session.execute(
                 update(Score).where(Score.chunk_id == chunk_id).values(deep_score=verdict.score)
             )
             if lifecycle == "admitted":
-                await self._link_entities(session, chunk, verdict)
+                linked_entity_ids = await self._link_entities(session, chunk, verdict)
             await session.execute(
                 update(Chunk).where(Chunk.id == chunk_id).values(lifecycle=lifecycle)
             )
@@ -121,10 +122,15 @@ class Extractor:
             logger.info("extract.done", chunk_id=chunk_id, lifecycle=lifecycle, score=verdict.score)
         if lifecycle == "admitted" and self._queue is not None:
             await self._queue.enqueue("append_buffer", {"chunk_id": chunk_id}, f"buffer:{chunk_id}")
+            for entity_id in linked_entity_ids:
+                await self._queue.enqueue(
+                    "topic_route", {"entity_id": entity_id}, f"topic:{entity_id}:{chunk_id}"
+                )
 
     async def _link_entities(
         self, session: AsyncSession, chunk: Chunk, verdict: ExtractionVerdict
-    ) -> None:
+    ) -> list[str]:
+        linked: list[str] = []
         for item in verdict.entities:
             name, kind = item["name"], item.get("type", "unknown")
             entity_id = hashlib.sha256(
@@ -150,3 +156,5 @@ class Extractor:
                 .on_conflict_do_nothing()
             )
             await session.execute(link)
+            linked.append(entity_id)
+        return linked

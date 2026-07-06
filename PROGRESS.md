@@ -2,7 +2,7 @@
 
 ## Now
 - Phase/Milestone: **M3 — Memory trees**
-- Task in flight: **M3-2 Hotness + topic routing** (next unchecked backlog item)
+- Task in flight: **M3-3 Global daily digest** (next unchecked backlog item)
 - Last CI: remote CI green on main (M2 exit gate passed); local gate green for M3-1
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M3-2 done: hotness = Σ 0.5^(age/half-life) (pure, unit-tested incl. half-life property); TopicRouter recomputes hotness per mention and materializes/refreshes a topic tree node only above threshold 3.0 (cold entities: hotness stored, no node). Extraction enqueues topic_route per linked entity.
 - 2026-07-06 — M2 exit gate confirmed on remote CI (run 28785512852 success). Milestone advanced to M3.
 - 2026-07-06 — M3-1 done: SourceTree — admitted→buffered→sealed lifecycle, buffer-full seal to L1, recursive cascade to L2+ via sealed_at consumption, flush_stale for partial buffers; deterministic children-digest marker. Coverage bar moved to combined pyramid measurement (ADR-0010), now 97%.
 - 2026-07-06 — M2-5 done; **M2 exit criteria met locally**: crash-recovery proven (M2-2), semantic+hybrid beat keyword on labeled eval (recall@1), queue dedupe/lease tested (M2-1). Mock embeddings upgraded to feature-hashed BoW (ADR-0009); hybrid search = RRF fusion; /memory/search gains mode=keyword|semantic|hybrid.
