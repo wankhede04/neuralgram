@@ -1,4 +1,4 @@
-.PHONY: fmt lint typecheck test-unit test-int test security build
+.PHONY: fmt lint typecheck test-unit test-int test-e2e test security build
 
 fmt:
 	uv run ruff format src tests
@@ -18,7 +18,10 @@ test-unit:
 test-int:
 	uv run pytest tests/integration || [ $$? -eq 5 ]
 
-test: test-unit test-int
+test-e2e:
+	uv run pytest tests/e2e || [ $$? -eq 5 ]
+
+test: test-unit test-int test-e2e
 
 security:
 	git ls-files -z | xargs -0 uv run detect-secrets-hook --baseline .secrets.baseline
