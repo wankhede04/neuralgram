@@ -17,6 +17,7 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.46b0",
     "prometheus-client>=0.20",
     "pgvector>=0.3",
+    "regex>=2024.5",
 ]
 
 [dependency-groups]
@@ -31,6 +32,7 @@ dev = [
     "detect-secrets>=1.5",
     "testcontainers[postgres]>=4.7",
     "hypothesis>=6.100",
+    "types-regex>=2026.6.28.20260630",
 ]
 
 [build-system]
