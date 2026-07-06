@@ -10,6 +10,7 @@ from neuralgram import __version__
 from neuralgram.api.routes_memory import router as memory_router
 from neuralgram.common.config import Settings, get_settings
 from neuralgram.common.db import build_engine, build_session_factory
+from neuralgram.memory.digest import DigestBuilder, DigestScheduler
 from neuralgram.memory.extraction import Extractor
 from neuralgram.memory.queue import JobQueue
 from neuralgram.memory.store import ContentStore
@@ -35,6 +36,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     extractor = Extractor(app.state.session_factory, app.state.gateway, queue=app.state.queue)
     tree = SourceTree(app.state.session_factory, app.state.gateway)
     topics = TopicRouter(app.state.session_factory, app.state.gateway)
+    digest = DigestBuilder(app.state.session_factory, app.state.gateway)
     app.state.worker_pool = WorkerPool(
         app.state.queue,
         {
@@ -42,12 +44,16 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             "append_buffer": tree.append_buffer,
             "flush_stale": tree.flush_stale,
             "topic_route": topics.topic_route,
+            "digest_daily": digest.digest_daily,
         },
     )
+    app.state.digest_scheduler = DigestScheduler(app.state.queue, app.state.session_factory)
     await app.state.worker_pool.start()
+    app.state.digest_scheduler.start()
     try:
         yield
     finally:
+        await app.state.digest_scheduler.stop()
         await app.state.worker_pool.stop()
         await engine.dispose()
 
