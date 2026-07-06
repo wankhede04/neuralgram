@@ -2,7 +2,7 @@
 
 ## Now
 - Phase/Milestone: **M3 — Memory trees**
-- Task in flight: **M3-4 Tree-scoped retrieval** (next unchecked backlog item)
+- Task in flight: **M3-5 Cost-bounded growth benchmark** (next unchecked backlog item)
 - Last CI: remote CI green on main (M2 exit gate passed); local gate green for M3-1
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M3-4 done: TreeRetrieval (tenant-scoped) — drill_down (source tree, root-first, level filter), topic (entity nodes), global_digest (per day); child_ids preserve the provenance chain; GET /memory/summaries exposes all three scopes. Cross-tenant blindness tested per scope.
 - 2026-07-06 — M3-3 done: DigestBuilder — one global node per (tenant, day), refreshed on re-run, none for empty days; DigestScheduler sleeps to 00:00 UTC and enqueues digest_daily per active tenant, idempotent via queue dedupe (tick twice → 0 new). Wired into lifespan + worker pool.
 - 2026-07-06 — M3-2 done: hotness = Σ 0.5^(age/half-life) (pure, unit-tested incl. half-life property); TopicRouter recomputes hotness per mention and materializes/refreshes a topic tree node only above threshold 3.0 (cold entities: hotness stored, no node). Extraction enqueues topic_route per linked entity.
 - 2026-07-06 — M2 exit gate confirmed on remote CI (run 28785512852 success). Milestone advanced to M3.
