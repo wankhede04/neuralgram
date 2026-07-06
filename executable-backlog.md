@@ -9,7 +9,7 @@ Legend: `Dep:` must be done first · `Gate:` triggers a human gate (BUILD-LOOP �
 ## Phase 0 — Scaffold
 
 - [x] **P0-1 Repo & tooling** — pyproject/uv, ruff, mypy strict, pytest, Makefile targets (`fmt/lint/typecheck/test/security/build`). *AC:* `make lint typecheck test` runs green on empty app.
-- [ ] **P0-2 Docker & compose** — multi-stage Dockerfile; compose with Postgres+pgvector and Redis. *AC:* `make build` boots; `/health` returns 200. *Dep:* P0-1.
+- [x] **P0-2 Docker & compose** — multi-stage Dockerfile; compose with Postgres+pgvector and Redis. *AC:* `make build` boots; `/health` returns 200. *Dep:* P0-1.
 - [ ] **P0-3 CI pipeline** — `.github/workflows/ci.yml` with all gate stages + coverage threshold + migration up/down check. *AC:* CI green on a trivial PR; a deliberately failing test blocks merge. *Dep:* P0-2.
 - [ ] **P0-4 Config & mock mode** — typed `Settings`; `MOCK_PROVIDERS=true` path. *AC:* app starts with no real keys; mock embed/complete return deterministic output. *Dep:* P0-1.
 - [ ] **P0-5 DB harness** — SQLAlchemy session, Alembic baseline migration, repository base with enforced `tenant_id` filter. *AC:* migration up/down clean; repo rejects un-scoped tenant queries in a test. *Dep:* P0-2.

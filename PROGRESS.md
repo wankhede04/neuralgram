@@ -2,8 +2,8 @@
 
 ## Now
 - Phase/Milestone: **P0 — Scaffold**
-- Task in flight: **P0-2 Docker & compose** (next unchecked backlog item)
-- Last CI: local gate green (fmt/lint/typecheck/test-unit/test-int/security) — CI pipeline lands in P0-3
+- Task in flight: **P0-3 CI pipeline** (next unchecked backlog item)
+- Last CI: local gate green incl. `make build` (image boots, /health 200, container healthy) — CI pipeline lands in P0-3
 
 ## Blocked
 - none
@@ -19,5 +19,6 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — P0-2 done: multi-stage Dockerfile (uv builder → slim non-root runtime, HEALTHCHECK), compose with pgvector Postgres 16 + Redis 7; image boots, /health 200, healthcheck green. Dev compose creds allowlisted in secret scan.
 - 2026-07-06 — P0-1 done: uv/pyproject scaffold, Makefile gates, src/neuralgram skeleton, /health + test; full local gate green. ADR-0001 (uv), ADR-0002 (detect-secrets + pip-audit).
 - (seed) — Instruction package authored (spec, standards, backlog, build-loop). Ready to begin P0-1.
