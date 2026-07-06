@@ -1,6 +1,8 @@
 """Typed application settings, sourced from the environment (standards §3)."""
 
+import os
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -44,5 +46,13 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Return the process-wide `Settings` instance (cached after first read)."""
+    """Return the process-wide `Settings` instance (cached after first read).
+
+    When `NEURALGRAM_SECRETS_DIR` names an existing directory (a mounted
+    secret-manager volume, e.g. /run/secrets), files in it override env
+    values — secrets never need to live in env files or the repo (M5-5).
+    """
+    secrets_dir = os.getenv("NEURALGRAM_SECRETS_DIR")
+    if secrets_dir and Path(secrets_dir).is_dir():
+        return Settings(_secrets_dir=secrets_dir)  # type: ignore[call-arg]  # pydantic-settings kwarg
     return Settings()
