@@ -1,0 +1,667 @@
+{
+  "components": {
+    "schemas": {
+      "AuditRecord": {
+        "description": "One audit-trail entry.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "resource": {
+            "title": "Resource",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "actor",
+          "action",
+          "resource",
+          "status",
+          "created_at"
+        ],
+        "title": "AuditRecord",
+        "type": "object"
+      },
+      "ErasureReport": {
+        "description": "What one erasure removed.",
+        "properties": {
+          "chunk_entities": {
+            "title": "Chunk Entities",
+            "type": "integer"
+          },
+          "chunks": {
+            "title": "Chunks",
+            "type": "integer"
+          },
+          "entities": {
+            "title": "Entities",
+            "type": "integer"
+          },
+          "jobs": {
+            "title": "Jobs",
+            "type": "integer"
+          },
+          "scores": {
+            "title": "Scores",
+            "type": "integer"
+          },
+          "summaries": {
+            "title": "Summaries",
+            "type": "integer"
+          },
+          "vault_files": {
+            "title": "Vault Files",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chunks",
+          "scores",
+          "chunk_entities",
+          "entities",
+          "summaries",
+          "jobs",
+          "vault_files"
+        ],
+        "title": "ErasureReport",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IngestRequest": {
+        "description": "A raw source payload to canonicalize, chunk, and persist.",
+        "properties": {
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "source_type": {
+            "default": "slack",
+            "title": "Source Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "payload"
+        ],
+        "title": "IngestRequest",
+        "type": "object"
+      },
+      "IngestResponse": {
+        "description": "Counts describing what an ingest call did.",
+        "properties": {
+          "chunks_inserted": {
+            "title": "Chunks Inserted",
+            "type": "integer"
+          },
+          "chunks_skipped": {
+            "title": "Chunks Skipped",
+            "type": "integer"
+          },
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "documents",
+          "chunks_inserted",
+          "chunks_skipped"
+        ],
+        "title": "IngestResponse",
+        "type": "object"
+      },
+      "RetrievedChunk": {
+        "description": "A retrieval result: content plus the provenance trail back to its source.",
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "content_md": {
+            "title": "Content Md",
+            "type": "string"
+          },
+          "lifecycle": {
+            "title": "Lifecycle",
+            "type": "string"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "token_count": {
+            "title": "Token Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "source_id",
+          "content_md",
+          "token_count",
+          "lifecycle",
+          "provenance"
+        ],
+        "title": "RetrievedChunk",
+        "type": "object"
+      },
+      "SummaryNode": {
+        "description": "A summary-tree node with its provenance chain (child ids).",
+        "properties": {
+          "body_md": {
+            "title": "Body Md",
+            "type": "string"
+          },
+          "child_ids": {
+            "additionalProperties": true,
+            "title": "Child Ids",
+            "type": "object"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "scope_id": {
+            "title": "Scope Id",
+            "type": "string"
+          },
+          "sealed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sealed At"
+          },
+          "summary_id": {
+            "title": "Summary Id",
+            "type": "string"
+          },
+          "tree_type": {
+            "title": "Tree Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary_id",
+          "tree_type",
+          "scope_id",
+          "level",
+          "body_md",
+          "child_ids",
+          "sealed_at"
+        ],
+        "title": "SummaryNode",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "in": "header",
+        "name": "x-api-key",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "title": "Neuralgram",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/admin/audit": {
+      "get": {
+        "description": "The tenant's audit trail (who queried whose memory), newest first.",
+        "operationId": "audit_endpoint_admin_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuditRecord"
+                  },
+                  "title": "Response Audit Endpoint Admin Audit Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Audit Endpoint",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/erase": {
+      "post": {
+        "description": "GDPR erasure of the caller's own tenant: cascade delete of all memory.\n\nIrreversible. Usage and audit records are retained (billing/security).",
+        "operationId": "erase_endpoint_admin_erase_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErasureReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Erase Endpoint",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Liveness probe: returns service status and version.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/memory/chunks/{chunk_id}": {
+      "get": {
+        "description": "Fetch one chunk by id within this tenant; 404 if absent or foreign.",
+        "operationId": "fetch_endpoint_memory_chunks__chunk_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chunk_id",
+            "required": true,
+            "schema": {
+              "title": "Chunk Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievedChunk"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Fetch Endpoint",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/memory/ingest": {
+      "post": {
+        "description": "Canonicalize `payload`, chunk it, and persist rows + vault files atomically.",
+        "operationId": "ingest_endpoint_memory_ingest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Ingest Endpoint",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/memory/search": {
+      "get": {
+        "description": "Search this tenant's chunks (keyword, semantic, or hybrid); results carry provenance.",
+        "operationId": "search_endpoint_memory_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "default": "hybrid",
+              "enum": [
+                "keyword",
+                "semantic",
+                "hybrid"
+              ],
+              "title": "Mode",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RetrievedChunk"
+                  },
+                  "title": "Response Search Endpoint Memory Search Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Search Endpoint",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/memory/summaries": {
+      "get": {
+        "description": "Tree-scoped retrieval: drill_down (source), topic (entity), global (day).",
+        "operationId": "summaries_endpoint_memory_summaries_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tree",
+            "required": true,
+            "schema": {
+              "enum": [
+                "source",
+                "topic",
+                "global"
+              ],
+              "title": "Tree",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Scope Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Level"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SummaryNode"
+                  },
+                  "title": "Response Summaries Endpoint Memory Summaries Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Summaries Endpoint",
+        "tags": [
+          "memory"
+        ]
+      }
+    }
+  }
+}
