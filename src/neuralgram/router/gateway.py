@@ -5,13 +5,17 @@ work (external cost / D3 legality) and land in M2-3 / M4-2.
 """
 
 import hashlib
-from typing import Protocol
+import math
+from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel
 
 from neuralgram.common.config import Settings
 from neuralgram.common.errors import RoutingError
 from neuralgram.router.routing import RouteTable, mock_route_table
+
+if TYPE_CHECKING:
+    from neuralgram.router.metering import UsageMeter
 
 
 class Message(BaseModel):
@@ -99,15 +103,21 @@ class MockProvider:
 
 
 class ModelGateway:
-    """Routes `complete`/`embed` through the hint table to provider adapters (C4)."""
+    """Routes `complete`/`embed` through the hint table to provider adapters (C4).
+
+    When a `UsageMeter` is attached and `tenant_id` is provided, every call
+    is pre-checked against the tenant's hard spend cap and recorded after.
+    """
 
     def __init__(
         self,
         providers: dict[str, ModelProvider],
         route_table: RouteTable,
+        meter: "UsageMeter | None" = None,
     ) -> None:
         self._providers = providers
         self._route_table = route_table
+        self._meter = meter
 
     @property
     def route_table(self) -> RouteTable:
@@ -120,18 +130,40 @@ class ModelGateway:
             raise RoutingError(f"no provider adapter registered as {name!r}")
         return provider
 
-    async def complete(self, messages: list[Message], model_or_hint: str) -> CompletionResult:
+    async def complete(
+        self, messages: list[Message], model_or_hint: str, tenant_id: str | None = None
+    ) -> CompletionResult:
         """Resolve `model_or_hint` and generate a completion on the routed provider."""
         resolution = self._route_table.resolve(model_or_hint)
-        return await self._provider_for(resolution.provider).complete(messages, resolution.model)
+        if self._meter is not None and tenant_id is not None:
+            await self._meter.check_cap(tenant_id)
+        result = await self._provider_for(resolution.provider).complete(messages, resolution.model)
+        if self._meter is not None and tenant_id is not None:
+            await self._meter.record(
+                tenant_id,
+                resolution.provider,
+                resolution.model,
+                resolution.hint,
+                result.usage.tokens_in,
+                result.usage.tokens_out,
+            )
+        return result
 
-    async def embed(self, texts: list[str]) -> list[list[float]]:
+    async def embed(self, texts: list[str], tenant_id: str | None = None) -> list[list[float]]:
         """Embed texts via the provider routed for `hint:embed`."""
         resolution = self._route_table.resolve("hint:embed")
-        return await self._provider_for(resolution.provider).embed(texts)
+        if self._meter is not None and tenant_id is not None:
+            await self._meter.check_cap(tenant_id)
+        vectors = await self._provider_for(resolution.provider).embed(texts)
+        if self._meter is not None and tenant_id is not None:
+            tokens_in = sum(math.ceil(len(text) / 4) for text in texts)
+            await self._meter.record(
+                tenant_id, resolution.provider, resolution.model, "embed", tokens_in, 0
+            )
+        return vectors
 
 
-def build_gateway(settings: Settings) -> ModelGateway:
+def build_gateway(settings: Settings, meter: "UsageMeter | None" = None) -> ModelGateway:
     """Construct the gateway for `settings`.
 
     Raises `RuntimeError` if mock mode is off: real provider adapters are
@@ -145,4 +177,4 @@ def build_gateway(settings: Settings) -> ModelGateway:
     providers: dict[str, ModelProvider] = {
         "mock": MockProvider(embedding_dim=settings.embedding_dim)
     }
-    return ModelGateway(providers, RouteTable(mock_route_table(), default_provider="mock"))
+    return ModelGateway(providers, RouteTable(mock_route_table(), default_provider="mock"), meter)

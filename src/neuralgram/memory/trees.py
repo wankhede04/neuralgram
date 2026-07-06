@@ -90,7 +90,7 @@ class SourceTree:
             if not buffered:
                 return None
 
-            body = await self._summarize([c.content_md for c in buffered])
+            body = await self._summarize([c.content_md for c in buffered], tenant_id)
             summary_id = uuid.uuid4().hex
             session.add(
                 Summary(
@@ -172,7 +172,7 @@ class SourceTree:
                 if len(open_nodes) < self._cascade_size:
                     return
 
-                body = await self._summarize([n.body_md for n in open_nodes])
+                body = await self._summarize([n.body_md for n in open_nodes], tenant_id)
                 parent_id = uuid.uuid4().hex
                 session.add(
                     Summary(
@@ -193,12 +193,13 @@ class SourceTree:
                 await session.commit()
             level += 1
 
-    async def _summarize(self, bodies: list[str]) -> str:
+    async def _summarize(self, bodies: list[str], tenant_id: str) -> str:
         joined = "\n\n---\n\n".join(bodies)
         compressed = compress(joined, SUMMARY_BUDGET_TOKENS)
         reply = await self._gateway.complete(
             [Message(role="user", content=f"Summarize:\n\n{compressed.text}")],
             "hint:summarize",
+            tenant_id=tenant_id,
         )
         # Deterministic content marker so identical inputs yield identical nodes.
         digest = hashlib.sha256(joined.encode()).hexdigest()[:12]

@@ -35,6 +35,20 @@ compression_tokens_out_total = Counter(
     registry=registry,
 )
 
+model_tokens_total = Counter(
+    "neuralgram_model_tokens_total",
+    "Model tokens by tenant, hint, and direction (in/out).",
+    labelnames=("tenant", "hint", "direction"),
+    registry=registry,
+)
+
+model_cost_usd_total = Counter(
+    "neuralgram_model_cost_usd_total",
+    "Model spend in USD by tenant and hint.",
+    labelnames=("tenant", "hint"),
+    registry=registry,
+)
+
 compression_reduction_pct = Histogram(
     "neuralgram_compression_reduction_pct",
     "Per-call token reduction percentage, by applied rule.",

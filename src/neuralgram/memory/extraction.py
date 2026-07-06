@@ -103,9 +103,10 @@ class Extractor:
             reply = await self._gateway.complete(
                 [Message(role="user", content=_EXTRACTION_PROMPT + compressed.text)],
                 "hint:fast",
+                tenant_id=chunk.tenant_id,
             )
             verdict = parse_model_verdict(reply.text) or heuristic_verdict(chunk.content_md)
-            embedding = (await self._gateway.embed([compressed.text]))[0]
+            embedding = (await self._gateway.embed([compressed.text], tenant_id=chunk.tenant_id))[0]
 
             lifecycle = "admitted" if verdict.score >= self._admit_threshold else "dropped"
             linked_entity_ids: list[str] = []

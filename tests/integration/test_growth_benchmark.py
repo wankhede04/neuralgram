@@ -39,14 +39,16 @@ class CountingGateway(ModelGateway):
         self._inner = inner
         self.summarize_tokens_in = 0
 
-    async def complete(self, messages: list[Message], model_or_hint: str) -> CompletionResult:
-        result = await self._inner.complete(messages, model_or_hint)
+    async def complete(
+        self, messages: list[Message], model_or_hint: str, tenant_id: str | None = None
+    ) -> CompletionResult:
+        result = await self._inner.complete(messages, model_or_hint, tenant_id)
         if model_or_hint == "hint:summarize":
             self.summarize_tokens_in += result.usage.tokens_in
         return result
 
-    async def embed(self, texts: list[str]) -> list[list[float]]:
-        return await self._inner.embed(texts)
+    async def embed(self, texts: list[str], tenant_id: str | None = None) -> list[list[float]]:
+        return await self._inner.embed(texts, tenant_id)
 
 
 @pytest.fixture(scope="module")

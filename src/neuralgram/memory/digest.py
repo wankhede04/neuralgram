@@ -78,6 +78,7 @@ class DigestBuilder:
             reply = await self._gateway.complete(
                 [Message(role="user", content=f"Daily digest:\n\n{compressed.text}")],
                 "hint:summarize",
+                tenant_id=tenant_id,
             )
             child_ids = {"chunks": [c.id for c in chunks]}
 

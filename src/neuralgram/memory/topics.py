@@ -64,7 +64,7 @@ class TopicRouter:
                 logger.info("topic.below_threshold", entity_id=entity_id, hotness=score)
                 return
 
-            body = await self._summarize([row[2] for row in mention_rows])
+            body = await self._summarize([row[2] for row in mention_rows], entity.tenant_id)
             existing = (
                 await session.execute(
                     select(Summary).where(
@@ -94,10 +94,11 @@ class TopicRouter:
             await session.commit()
             logger.info("topic.materialized", entity_id=entity_id, hotness=score)
 
-    async def _summarize(self, bodies: list[str]) -> str:
+    async def _summarize(self, bodies: list[str], tenant_id: str) -> str:
         compressed = compress("\n\n---\n\n".join(bodies), TOPIC_SUMMARY_BUDGET_TOKENS)
         reply = await self._gateway.complete(
             [Message(role="user", content=f"Summarize this topic:\n\n{compressed.text}")],
             "hint:summarize",
+            tenant_id=tenant_id,
         )
         return reply.text

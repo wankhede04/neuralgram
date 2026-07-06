@@ -83,7 +83,7 @@ async def search_endpoint(
     async with factory() as session:
         if mode == "keyword":
             return await retrieval.search(session, q, limit)
-        query_vector = (await request.app.state.gateway.embed([q]))[0]
+        query_vector = (await request.app.state.gateway.embed([q], tenant_id=tenant_id))[0]
         if mode == "semantic":
             return await retrieval.semantic_search(session, query_vector, limit)
         return await retrieval.hybrid_search(session, q, query_vector, limit)
