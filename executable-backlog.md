@@ -73,11 +73,11 @@ Legend: `Dep:` must be done first · `Gate:` triggers a human gate (BUILD-LOOP �
 
 ## Release  `Gate: full checklist is a human sign-off`
 
-- [ ] **R-1 Load/soak test** at target volume; latency SLO met; no leaks. *AC:* report in `ops/`.
-- [ ] **R-2 Backup + restore** for Postgres and vault; rehearsed. *AC:* restore drill passes.
-- [ ] **R-3 Rollback rehearsal** — migrations reversible; documented. *AC:* rollback drill passes.
-- [ ] **R-4 Runbooks** — deploy/rollback/on-call/incident/erasure. *AC:* present in `ops/`.
-- [ ] **R-5 Docs** — README, OpenAPI, DECISIONS.md current; D1/D2/D3 recorded resolved. 
+- [x] **R-1 Load/soak test** at target volume; latency SLO met; no leaks. *AC:* report in `ops/`.
+- [x] **R-2 Backup + restore** for Postgres and vault; rehearsed. *AC:* restore drill passes.
+- [x] **R-3 Rollback rehearsal** — migrations reversible; documented. *AC:* rollback drill passes.
+- [x] **R-4 Runbooks** — deploy/rollback/on-call/incident/erasure. *AC:* present in `ops/`.
+- [x] **R-5 Docs** — README, OpenAPI, DECISIONS.md current; D1/D2/D3 recorded resolved. 
 - [ ] **R-6 Final security review** — no high/critical; isolation + authz signed off. `Gate:` human review.
 - [ ] **R-7 Release PR + 1.0.0 tag** — open PR; HALT for human merge.
 
