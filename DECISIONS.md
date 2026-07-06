@@ -72,3 +72,14 @@ require the dependency; tenant_id flows into the tenant-scoped repositories.
 **Consequence.** Simple, testable tenant scoping for M1–M4. Key storage is env-based
 (dev-grade): M5-1/M5-5 must replace this with the chosen D1-driven tenancy model and a
 secret manager, including rotation.
+
+## ADR-0007 — Queue backend: Postgres SKIP LOCKED (2026-07-06, M2-1)
+
+**Context.** Spec C2.2 leaves the queue backend open (Redis/Celery/RQ vs Postgres) and
+recommends Postgres-backed for transactional consistency with the data.
+**Decision.** Postgres-backed queue on the `jobs` table: claims via
+`SELECT … FOR UPDATE SKIP LOCKED`, unique `dedupe_key`, lease owner+expiry (expired
+leases are claimable again), `run_after` scheduling, bounded retries with backoff
+(3 tries, 30s backoff) then `failed`.
+**Consequence.** Lease/dedupe stay transactional with chunk data; no new infra. Revisit
+under load per spec (Redis/RQ) — the JobQueue interface is the seam.
