@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # Maps API key -> tenant_id (ADR-0006). Empty by default: no key, no access.
     api_keys: dict[str, str] = {}
 
+    # Maps API key -> role (reader|writer|admin); absent keys default to writer (M5-2).
+    api_key_roles: dict[str, str] = {}
+
     # High budget: deterministic clean-up only on ingest; no lossy truncation.
     ingest_compress_budget_tokens: int = 100_000
 

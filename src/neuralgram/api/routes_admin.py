@@ -1,0 +1,58 @@
+"""Admin routes (C7, M5-2): audit-trail queries, admin role only, tenant-scoped."""
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query, Request
+from pydantic import BaseModel
+from sqlalchemy import desc, select
+
+from neuralgram.api.deps import require_role
+from neuralgram.common.db import tenant_session
+from neuralgram.storage.models import AuditEvent
+
+router = APIRouter(prefix="/admin", tags=["admin"])
+
+AdminTenant = Annotated[str, Depends(require_role("admin"))]
+
+
+class AuditRecord(BaseModel):
+    """One audit-trail entry."""
+
+    actor: str
+    action: str
+    resource: str
+    status: int
+    created_at: str
+
+
+@router.get("/audit", response_model=list[AuditRecord])
+async def audit_endpoint(
+    tenant_id: AdminTenant,
+    request: Request,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[AuditRecord]:
+    """The tenant's audit trail (who queried whose memory), newest first."""
+    factory = request.app.state.session_factory
+    async with tenant_session(factory, tenant_id) as session:
+        rows = (
+            (
+                await session.execute(
+                    select(AuditEvent)
+                    .where(AuditEvent.tenant_id == tenant_id)
+                    .order_by(desc(AuditEvent.created_at))
+                    .limit(limit)
+                )
+            )
+            .scalars()
+            .all()
+        )
+    return [
+        AuditRecord(
+            actor=row.actor,
+            action=row.action,
+            resource=row.resource,
+            status=row.status,
+            created_at=row.created_at.isoformat(),
+        )
+        for row in rows
+    ]
