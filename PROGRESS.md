@@ -2,7 +2,7 @@
 
 ## Now
 - Phase/Milestone: **Release**
-- Task in flight: **R-6 final security review + R-7 release PR (human gates)**
+- Task in flight: **HALTED — release PR open; R-6 review + merge + 1.0.0 tag are human actions**
 - Last CI: remote CI green on main through M4-5 (run 28792392742)
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — R-7: version bumped to 1.0.0, release PR opened from release/1.0.0. Build loop HALTED per BUILD-LOOP §3 step 10: human review (R-6), merge, and tag remain.
 - 2026-07-06 — M5 exit gate confirmed on remote CI (run 28809108534). Release phase: R-1 soak PASS (p95 151ms vs 1s SLO, RSS +5.5MB, 0 connection delta; report in ops/reports/); R-2 pg_dump/psql + vault restore drill and R-3 one-step rollback drill now rehearsed in CI; R-4 runbooks (deploy/rollback, on-call/incident, GDPR erasure, secrets rotation) in ops/runbooks/; R-5 README overhauled + OpenAPI exported to docs/openapi.json. R-6/R-7 are human gates — halting after opening the release PR.
 - 2026-07-06 — M5-5 done; **M5 exit criteria met locally**: isolation negative tests (M5-1), erasure cascade (M5-3), audit trail of memory queries (M5-2), chaos-fired alerts (M5-4). Secrets: NEURALGRAM_SECRETS_DIR file-mount support (secret-manager delivery path), rotation runbook in ops/runbooks/, zero-downtime key-rotation rehearsal test (overlap→rollover→revoke); repo scan clean (continuous).
 - 2026-07-06 — M5-4 done: queue_depth gauge (periodic monitor task), chunks_ingested + jobs_failed counters; alert rules as evaluatable predicates (observability/alerts.py) mirrored in ops/alerts.yml (Prometheus); Grafana health+margin dashboard in ops/dashboards/. Chaos test: broken handler exhausts retries → failed job counted → NeuralgramJobFailures fires; backlog rule fires above threshold and clears on real sample.

@@ -79,7 +79,7 @@ Legend: `Dep:` must be done first · `Gate:` triggers a human gate (BUILD-LOOP �
 - [x] **R-4 Runbooks** — deploy/rollback/on-call/incident/erasure. *AC:* present in `ops/`.
 - [x] **R-5 Docs** — README, OpenAPI, DECISIONS.md current; D1/D2/D3 recorded resolved. 
 - [ ] **R-6 Final security review** — no high/critical; isolation + authz signed off. `Gate:` human review.
-- [ ] **R-7 Release PR + 1.0.0 tag** — open PR; HALT for human merge.
+- [x] **R-7 Release PR + 1.0.0 tag** *(PR opened; HALTED for human merge + tag)* — open PR; HALT for human merge.
 
 ---
 
