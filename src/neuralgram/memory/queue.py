@@ -15,6 +15,7 @@ from sqlalchemy import or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from neuralgram.observability import metrics
 from neuralgram.storage.models import Job
 
 DEFAULT_LEASE_SECONDS = 60
@@ -133,11 +134,12 @@ class JobQueue:
         Returns the resulting status ('queued' or 'failed').
         """
         async with self._session_factory() as session:
-            retry_count = (
-                await session.execute(select(Job.retry_count).where(Job.id == job_id))
-            ).scalar_one()
+            retry_count, kind = (
+                await session.execute(select(Job.retry_count, Job.kind).where(Job.id == job_id))
+            ).one()
             if retry_count + 1 >= self._max_retries:
                 values: dict[str, Any] = {"status": "failed"}
+                metrics.jobs_failed_total.labels(kind).inc()
             else:
                 values = {
                     "status": "queued",

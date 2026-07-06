@@ -23,6 +23,7 @@ from neuralgram.memory.workers import WorkerPool
 from neuralgram.observability.logging import configure_logging
 from neuralgram.observability.metrics import metrics_app
 from neuralgram.observability.middleware import RequestContextMiddleware
+from neuralgram.observability.queue_monitor import QueueDepthMonitor
 from neuralgram.observability.tracing import instrument_app, setup_tracing
 from neuralgram.router.cache import RedisResponseCache
 from neuralgram.router.gateway import build_gateway
@@ -62,11 +63,14 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         },
     )
     app.state.digest_scheduler = DigestScheduler(app.state.queue, app.state.system_session_factory)
+    app.state.queue_monitor = QueueDepthMonitor(app.state.system_session_factory)
     await app.state.worker_pool.start()
     app.state.digest_scheduler.start()
+    app.state.queue_monitor.start()
     try:
         yield
     finally:
+        await app.state.queue_monitor.stop()
         await app.state.digest_scheduler.stop()
         await app.state.worker_pool.stop()
         await cache.close()

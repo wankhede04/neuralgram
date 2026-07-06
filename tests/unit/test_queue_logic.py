@@ -83,7 +83,7 @@ async def test_claim_leases_the_selected_job() -> None:
 
 @pytest.mark.parametrize(("retry_count", "expected"), [(0, "queued"), (1, "queued"), (2, "failed")])
 async def test_fail_requeues_until_retries_exhausted(retry_count: int, expected: str) -> None:
-    session = FakeSession(script=[retry_count, None])
+    session = FakeSession(script=[(retry_count, "extract_chunk"), None])
     assert await _queue(session, max_retries=3).fail("job-1") == expected
 
 

@@ -13,6 +13,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from neuralgram.memory.chunker import ChunkDraft
+from neuralgram.observability import metrics
 from neuralgram.storage.models import Chunk
 
 
@@ -64,6 +65,8 @@ class ContentStore:
                 path.unlink(missing_ok=True)
             raise
 
+        if inserted_ids:
+            metrics.chunks_ingested_total.labels(drafts[0].tenant_id).inc(len(inserted_ids))
         return PersistResult(
             inserted=len(inserted_ids),
             skipped=len(drafts) - len(inserted_ids),

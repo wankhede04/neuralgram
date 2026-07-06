@@ -2,7 +2,7 @@
 
 from typing import cast
 
-from prometheus_client import CollectorRegistry, Counter, Histogram, make_asgi_app
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, make_asgi_app
 from starlette.types import ASGIApp
 
 registry = CollectorRegistry()
@@ -32,6 +32,27 @@ compression_tokens_out_total = Counter(
     "neuralgram_compression_tokens_out_total",
     "Tokens leaving the compression layer, by applied rule.",
     labelnames=("rule",),
+    registry=registry,
+)
+
+queue_depth = Gauge(
+    "neuralgram_queue_depth",
+    "Jobs in the durable queue, by status.",
+    labelnames=("status",),
+    registry=registry,
+)
+
+chunks_ingested_total = Counter(
+    "neuralgram_chunks_ingested_total",
+    "Chunks persisted by the hot path, by tenant.",
+    labelnames=("tenant",),
+    registry=registry,
+)
+
+jobs_failed_total = Counter(
+    "neuralgram_jobs_failed_total",
+    "Jobs that exhausted retries and were marked failed, by kind.",
+    labelnames=("kind",),
     registry=registry,
 )
 
