@@ -2,7 +2,7 @@
 
 ## Now
 - Phase/Milestone: **M2 — Enrichment**
-- Task in flight: **M2-2 Worker pool** (next unchecked backlog item)
+- Task in flight: **M2-3 Router embed path (C4)** (next unchecked backlog item)
 - Last CI: remote CI green on main (M1 exit gate passed); local gate green for M2-1
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M2-2 done: WorkerPool (N=3 default) with handler registry, model-call semaphore, wake-on-ingest + polling fallback; crash recovery via lease expiry. Integration test kills a worker mid-job → job reclaimed and completed (status done, no lost admits); unit tests prove semaphore cap, wake, failure paths.
 - 2026-07-06 — M1 exit gate confirmed on remote CI (run 28779930024 success). Milestone advanced to M2.
 - 2026-07-06 — M2-1 done: Postgres-backed JobQueue (ADR-0007) — SKIP LOCKED claims, dedupe_key ON CONFLICT, lease expiry recovery, run_after scheduling, bounded retries→failed. Integration tests: dedupe, lease-expiry reclaim, deferred run_after, retry exhaustion, concurrent distinct claims.
 - 2026-07-06 — M1-9 done; **M1 exit criteria met**: e2e spine green (ingest real sample → search → fetch), idempotent re-ingest asserted (0 new chunks), provenance on every result, token-reduction metric recorded on real sample data. e2e suite wired into make test + CI integration stage.

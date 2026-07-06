@@ -34,7 +34,7 @@ Legend: `Dep:` must be done first · `Gate:` triggers a human gate (BUILD-LOOP �
 ## M2 — Enrichment  *(C2.2, C2.3, C4-embed)*
 
 - [x] **M2-1 Durable job queue (C2.2)** — Postgres-backed (SKIP LOCKED); kind/payload/dedupe-key/retry/lease/run_after. *AC:* dedupe prevents dup jobs; lease expiry returns job to queue. *Dep:* M1-1.
-- [ ] **M2-2 Worker pool** — N=3, semaphore caps concurrent model calls; woken by ingest, polling fallback; lease recovery on startup. *AC:* **crash-recovery test** — kill worker mid-job → job resumes, no lost admits. *Dep:* M2-1.
+- [x] **M2-2 Worker pool** — N=3, semaphore caps concurrent model calls; woken by ingest, polling fallback; lease recovery on startup. *AC:* **crash-recovery test** — kill worker mid-job → job resumes, no lost admits. *Dep:* M2-1.
 - [ ] **M2-3 Router embed path (C4)** — `embed(texts)` via gateway; mock in CI; `hint:embed`. `Gate:` enabling a real embedding provider = external-cost gate. *AC:* embeddings persisted to pgvector; contract test on adapter. *Dep:* P0-4.
 - [ ] **M2-4 Deep scoring + entity extraction (C2.3)** — `extract_chunk` job: deep-score + entities + embedding → `admitted`/`dropped`. *AC:* lifecycle transitions tested; dropped chunks retain provenance row. *Dep:* M2-2, M2-3.
 - [ ] **M2-5 Semantic search (C2.5)** — vector + keyword hybrid retrieval. *AC (fixture eval):* semantic beats keyword-only on a labeled fixture set. *Dep:* M2-4.
