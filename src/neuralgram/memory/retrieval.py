@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import Float, cast, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from neuralgram.storage.models import Chunk
+from neuralgram.storage.models import Chunk, Score
 from neuralgram.storage.repository import TenantScopedRepository
 
 
@@ -65,3 +65,46 @@ class ChunkRetrieval(TenantScopedRepository[Chunk]):
         statement = self.scoped_select().where(Chunk.id == chunk_id)
         row = (await session.execute(statement)).scalar_one_or_none()
         return _to_result(row) if row is not None else None
+
+    async def semantic_search(
+        self, session: AsyncSession, query_vector: list[float], limit: int = 10
+    ) -> list[RetrievedChunk]:
+        """Nearest-neighbor search over chunk embeddings (cosine), tenant-scoped."""
+        distance = Score.embedding.cosine_distance(query_vector)
+        statement = (
+            self.scoped_select()
+            .join(Score, Score.chunk_id == Chunk.id)
+            .where(Score.embedding.is_not(None))
+            .add_columns((1 - distance).label("rank"))
+            .order_by(distance)
+            .limit(limit)
+        )
+        rows = await session.execute(statement)
+        return [_to_result(row[0], float(row[1])) for row in rows]
+
+    async def hybrid_search(
+        self,
+        session: AsyncSession,
+        query: str,
+        query_vector: list[float],
+        limit: int = 10,
+        rrf_k: int = 60,
+    ) -> list[RetrievedChunk]:
+        """Keyword + semantic fusion via reciprocal rank fusion (RRF).
+
+        Each result's rank is `sum(1 / (rrf_k + position))` across the two
+        result lists, so a chunk missed by one retriever can still win.
+        """
+        keyword = await self.search(session, query, limit)
+        semantic = await self.semantic_search(session, query_vector, limit)
+
+        fused: dict[str, float] = {}
+        by_id: dict[str, RetrievedChunk] = {}
+        for results in (keyword, semantic):
+            for position, result in enumerate(results):
+                fused[result.chunk_id] = fused.get(result.chunk_id, 0.0) + 1.0 / (
+                    rrf_k + position + 1
+                )
+                by_id.setdefault(result.chunk_id, result)
+        ranked = sorted(fused, key=lambda cid: fused[cid], reverse=True)[:limit]
+        return [by_id[cid].model_copy(update={"rank": fused[cid]}) for cid in ranked]

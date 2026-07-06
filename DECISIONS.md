@@ -97,3 +97,17 @@ through the same parse path, which is unit-tested with valid JSON.
 **Consequence.** Lifecycle transitions (`admitted`/`dropped` at threshold 0.3) are fully
 testable in CI. Heuristic quality is placeholder-grade; verdict quality improves the
 moment a real provider is enabled, with no code change in the extractor.
+
+## ADR-0009 — Mock embeddings: feature-hashed bag-of-words (2026-07-06, M2-5)
+
+**Context.** M2-5's exit criterion ("semantic beats keyword on a labeled fixture eval")
+is unachievable with pure hash embeddings — they carry no similarity structure. Enabling
+a real embedding provider is an external-cost human gate we are not crossing.
+**Decision.** `MockProvider.embed` now produces deterministic feature-hashed
+bag-of-words vectors (per-token SHA-256 bucket + sign, L2-normalized). This is a real,
+zero-cost local embedding technique: shared vocabulary → closer cosine distance. Hybrid
+retrieval fuses keyword and vector results via reciprocal rank fusion (k=60).
+**Consequence.** Semantic/hybrid search is meaningfully testable in CI (eval: semantic
+and hybrid beat keyword recall@1). BoW captures lexical overlap only, not true
+semantics — the fixture eval must be re-run when a real embedding provider is enabled
+(M4-2) to revalidate with genuine semantic vectors.

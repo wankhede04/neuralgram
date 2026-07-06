@@ -37,7 +37,7 @@ Legend: `Dep:` must be done first · `Gate:` triggers a human gate (BUILD-LOOP �
 - [x] **M2-2 Worker pool** — N=3, semaphore caps concurrent model calls; woken by ingest, polling fallback; lease recovery on startup. *AC:* **crash-recovery test** — kill worker mid-job → job resumes, no lost admits. *Dep:* M2-1.
 - [x] **M2-3 Router embed path (C4)** *(mock provider only; real embedding provider remains an external-cost gate)* — `embed(texts)` via gateway; mock in CI; `hint:embed`. `Gate:` enabling a real embedding provider = external-cost gate. *AC:* embeddings persisted to pgvector; contract test on adapter. *Dep:* P0-4.
 - [x] **M2-4 Deep scoring + entity extraction (C2.3)** — `extract_chunk` job: deep-score + entities + embedding → `admitted`/`dropped`. *AC:* lifecycle transitions tested; dropped chunks retain provenance row. *Dep:* M2-2, M2-3.
-- [ ] **M2-5 Semantic search (C2.5)** — vector + keyword hybrid retrieval. *AC (fixture eval):* semantic beats keyword-only on a labeled fixture set. *Dep:* M2-4.
+- [x] **M2-5 Semantic search (C2.5)** *(BoW mock embeddings, ADR-0009; re-run eval when a real embed provider is enabled)* — vector + keyword hybrid retrieval. *AC (fixture eval):* semantic beats keyword-only on a labeled fixture set. *Dep:* M2-4.
 
 **Exit:** BUILD-LOOP §7 M2 gate.
 

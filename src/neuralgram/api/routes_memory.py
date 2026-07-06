@@ -1,6 +1,6 @@
 """Memory API routes (C5): ingest, search, fetch — all tenant-scoped."""
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
@@ -64,17 +64,27 @@ async def ingest_endpoint(
     return IngestResponse(documents=len(docs), chunks_inserted=inserted, chunks_skipped=skipped)
 
 
+SearchMode = Literal["keyword", "semantic", "hybrid"]
+
+
 @router.get("/search", response_model=list[RetrievedChunk])
 async def search_endpoint(
     tenant_id: Tenant,
     request: Request,
     q: Annotated[str, Query(min_length=1)],
     limit: Annotated[int, Query(ge=1, le=100)] = 10,
+    mode: SearchMode = "hybrid",
 ) -> list[RetrievedChunk]:
-    """Lexical search over this tenant's chunks; results carry provenance."""
+    """Search this tenant's chunks (keyword, semantic, or hybrid); results carry provenance."""
     factory = request.app.state.session_factory
+    retrieval = ChunkRetrieval(tenant_id)
     async with factory() as session:
-        return await ChunkRetrieval(tenant_id).search(session, q, limit)
+        if mode == "keyword":
+            return await retrieval.search(session, q, limit)
+        query_vector = (await request.app.state.gateway.embed([q]))[0]
+        if mode == "semantic":
+            return await retrieval.semantic_search(session, query_vector, limit)
+        return await retrieval.hybrid_search(session, q, query_vector, limit)
 
 
 @router.get("/chunks/{chunk_id}", response_model=RetrievedChunk)

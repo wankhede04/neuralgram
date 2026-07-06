@@ -48,15 +48,23 @@ class ModelProvider(Protocol):
         ...
 
 
-def _hash_floats(seed: str, dim: int) -> list[float]:
-    """Expand `seed` into `dim` deterministic floats in [-1, 1) via SHA-256 blocks."""
-    values: list[float] = []
-    block = 0
-    while len(values) < dim:
-        digest = hashlib.sha256(f"{seed}:{block}".encode()).digest()
-        values.extend(byte / 128.0 - 1.0 for byte in digest)
-        block += 1
-    return values[:dim]
+def _bow_embedding(text: str, dim: int) -> list[float]:
+    """Deterministic feature-hashed bag-of-words embedding, L2-normalized.
+
+    Texts sharing vocabulary land near each other in cosine space, so
+    similarity search behaves meaningfully without any external model
+    (ADR-0009).
+    """
+    vector = [0.0] * dim
+    for token in text.lower().split():
+        digest = hashlib.sha256(token.encode()).digest()
+        index = int.from_bytes(digest[:4], "big") % dim
+        sign = 1.0 if digest[4] % 2 == 0 else -1.0
+        vector[index] += sign
+    norm = sum(x * x for x in vector) ** 0.5
+    if norm == 0.0:
+        return vector
+    return [x / norm for x in vector]
 
 
 class MockProvider:
@@ -84,8 +92,8 @@ class MockProvider:
         )
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        """Return one deterministic hash-derived vector per input text."""
-        return [_hash_floats(text, self._embedding_dim) for text in texts]
+        """Return one deterministic bag-of-words vector per input text."""
+        return [_bow_embedding(text, self._embedding_dim) for text in texts]
 
 
 class ModelGateway:
