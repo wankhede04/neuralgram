@@ -15,3 +15,7 @@ class UnsupportedSourceError(NeuralgramError):
 
 class RoutingError(NeuralgramError):
     """A model_or_hint string could not be resolved to a provider/model."""
+
+
+class ProviderError(NeuralgramError):
+    """A provider adapter failed (network, HTTP, or response-parse error)."""
