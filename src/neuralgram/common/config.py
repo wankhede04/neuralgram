@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # Maps API key -> tenant_id (ADR-0006). Empty by default: no key, no access.
     api_keys: dict[str, str] = {}
 
+    # High budget: deterministic clean-up only on ingest; no lossy truncation.
+    ingest_compress_budget_tokens: int = 100_000
+
 
 @lru_cache
 def get_settings() -> Settings:

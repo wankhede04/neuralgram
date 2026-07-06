@@ -21,6 +21,28 @@ http_request_duration_seconds = Histogram(
     registry=registry,
 )
 
+compression_tokens_in_total = Counter(
+    "neuralgram_compression_tokens_in_total",
+    "Tokens entering the compression layer, by applied rule.",
+    labelnames=("rule",),
+    registry=registry,
+)
+
+compression_tokens_out_total = Counter(
+    "neuralgram_compression_tokens_out_total",
+    "Tokens leaving the compression layer, by applied rule.",
+    labelnames=("rule",),
+    registry=registry,
+)
+
+compression_reduction_pct = Histogram(
+    "neuralgram_compression_reduction_pct",
+    "Per-call token reduction percentage, by applied rule.",
+    labelnames=("rule",),
+    buckets=(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+    registry=registry,
+)
+
 
 def metrics_app() -> ASGIApp:
     """Return the ASGI app that serves this registry at /metrics."""

@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from neuralgram.compression import reducers
 from neuralgram.memory.chunker import estimate_tokens
+from neuralgram.observability import metrics
 from neuralgram.observability.logging import get_logger
 
 PayloadKind = Literal["html", "markdown", "text"]
@@ -92,11 +93,15 @@ def compress(payload: str, budget: int) -> CompressionResult:
         rule_name = f"{rule_name}+truncate"
 
     out_tokens = estimate_tokens(text)
+    reduction_pct = round(100 * (1 - out_tokens / in_tokens), 2) if in_tokens else 0.0
+    metrics.compression_tokens_in_total.labels(rule_name).inc(in_tokens)
+    metrics.compression_tokens_out_total.labels(rule_name).inc(out_tokens)
+    metrics.compression_reduction_pct.labels(rule_name).observe(reduction_pct)
     logger.info(
         "compression.applied",
         rule=rule_name,
         in_tokens=in_tokens,
         out_tokens=out_tokens,
-        reduction_pct=round(100 * (1 - out_tokens / in_tokens), 2) if in_tokens else 0.0,
+        reduction_pct=reduction_pct,
     )
     return CompressionResult(text=text, in_tokens=in_tokens, out_tokens=out_tokens, rule=rule_name)
