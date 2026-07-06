@@ -1,0 +1,49 @@
+{
+  "title": "Neuralgram — Health & Margin",
+  "uid": "neuralgram-main",
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "title": "Ingest throughput (chunks/min)",
+      "type": "timeseries",
+      "targets": [{ "expr": "sum by (tenant) (rate(neuralgram_chunks_ingested_total[5m])) * 60" }]
+    },
+    {
+      "title": "Queue depth by status",
+      "type": "timeseries",
+      "targets": [{ "expr": "neuralgram_queue_depth" }]
+    },
+    {
+      "title": "Failed jobs (15m)",
+      "type": "stat",
+      "targets": [{ "expr": "sum(increase(neuralgram_jobs_failed_total[15m]))" }]
+    },
+    {
+      "title": "HTTP latency p50 / p95",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum by (le) (rate(neuralgram_http_request_duration_seconds_bucket[5m])))" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(neuralgram_http_request_duration_seconds_bucket[5m])))" }
+      ]
+    },
+    {
+      "title": "Token cost per tenant (USD/h)",
+      "type": "timeseries",
+      "targets": [{ "expr": "sum by (tenant) (increase(neuralgram_model_cost_usd_total[1h]))" }]
+    },
+    {
+      "title": "Compression reduction % (the margin panel)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "1 - (sum(rate(neuralgram_compression_tokens_out_total[15m])) / sum(rate(neuralgram_compression_tokens_in_total[15m])))" }
+      ]
+    },
+    {
+      "title": "Cache hit rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(neuralgram_cache_hits_total[15m])) / (sum(rate(neuralgram_cache_hits_total[15m])) + sum(rate(neuralgram_cache_misses_total[15m])))" }
+      ]
+    }
+  ]
+}
