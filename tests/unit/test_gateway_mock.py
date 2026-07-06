@@ -38,7 +38,22 @@ async def test_mock_embed_is_deterministic_and_dimensioned() -> None:
     assert len(first) == 2
     assert all(len(vector) == 16 for vector in first)
     assert first[0] != first[1]
-    assert all(-1.0 <= value < 1.0 for vector in first for value in vector)
+    assert all(-1.0 <= value <= 1.0 for vector in first for value in vector)
+    for vector in first:  # non-empty text embeds to a unit vector
+        norm = sum(x * x for x in vector) ** 0.5
+        assert norm == pytest.approx(1.0)
+
+
+async def test_mock_embed_reflects_vocabulary_overlap() -> None:
+    gateway = build_gateway(_settings())
+    a, b, c = await gateway.embed(
+        ["payment gateway deploy", "payment gateway rollout", "noodle lunch plans"]
+    )
+
+    def cosine(u: list[float], v: list[float]) -> float:
+        return sum(x * y for x, y in zip(u, v, strict=True))
+
+    assert cosine(a, b) > cosine(a, c), "shared vocabulary must mean closer vectors"
 
 
 async def test_real_providers_are_gated() -> None:

@@ -29,7 +29,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.session_factory = build_session_factory(engine)
     app.state.content_store = ContentStore(app.state.session_factory, Path(settings.vault_path))
     app.state.queue = JobQueue(app.state.session_factory)
-    extractor = Extractor(app.state.session_factory, build_gateway(settings))
+    app.state.gateway = build_gateway(settings)
+    extractor = Extractor(app.state.session_factory, app.state.gateway)
     app.state.worker_pool = WorkerPool(app.state.queue, {"extract_chunk": extractor.extract_chunk})
     await app.state.worker_pool.start()
     try:

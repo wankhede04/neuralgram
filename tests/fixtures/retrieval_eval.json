@@ -1,0 +1,26 @@
+{
+  "docs": [
+    {
+      "label": "d1",
+      "text": "The payment gateway deploy is scheduled for Friday after the retro"
+    },
+    {
+      "label": "d2",
+      "text": "Quarterly budget review with finance covering vendor invoices"
+    },
+    {
+      "label": "d3",
+      "text": "Postgres migration checklist for the memory service rollout"
+    },
+    {
+      "label": "d4",
+      "text": "Team lunch plans at the noodle place near the office"
+    }
+  ],
+  "queries": [
+    { "query": "payment gateway deploy timeline expectations", "relevant": "d1" },
+    { "query": "postgres migration checklist status update", "relevant": "d3" },
+    { "query": "budget review vendor invoices summary notes", "relevant": "d2" },
+    { "query": "team lunch", "relevant": "d4" }
+  ]
+}
