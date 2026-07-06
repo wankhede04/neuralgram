@@ -1,8 +1,8 @@
 # Neuralgram — Progress
 
 ## Now
-- Phase/Milestone: **M5 — Hardening**
-- Task in flight: **M5-5 Secrets hardening** (next unchecked backlog item)
+- Phase/Milestone: **M5 — Hardening (complete, pending remote CI confirmation)**
+- Task in flight: **Release phase (R-1 Load/soak) after M5 exit confirms**
 - Last CI: remote CI green on main through M4-5 (run 28792392742)
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M5-5 done; **M5 exit criteria met locally**: isolation negative tests (M5-1), erasure cascade (M5-3), audit trail of memory queries (M5-2), chaos-fired alerts (M5-4). Secrets: NEURALGRAM_SECRETS_DIR file-mount support (secret-manager delivery path), rotation runbook in ops/runbooks/, zero-downtime key-rotation rehearsal test (overlap→rollover→revoke); repo scan clean (continuous).
 - 2026-07-06 — M5-4 done: queue_depth gauge (periodic monitor task), chunks_ingested + jobs_failed counters; alert rules as evaluatable predicates (observability/alerts.py) mirrored in ops/alerts.yml (Prometheus); Grafana health+margin dashboard in ops/dashboards/. Chaos test: broken handler exhausts retries → failed job counted → NeuralgramJobFailures fires; backlog rule fires above threshold and clears on real sample.
 - 2026-07-06 — M5-3 done: ErasureService cascades chunks→scores(embeddings)→chunk_entities→entities→summaries→vault files→referencing jobs in one txn + vault sweep; usage/audit records retained (billing/security). POST /admin/erase (admin role, own tenant only). Test seeds full pipeline via API for two tenants, erases one: zero residue anywhere, neighbor untouched.
 - 2026-07-06 — M5-2 done: roles reader<writer<admin per API key (default writer); ingest requires writer (403 otherwise); audit_events table (migration 0006, RLS'd) written by middleware for every /memory + /admin request incl. denials, actor = key fingerprint (raw keys never stored); GET /admin/audit (admin role, tenant-scoped, cross-tenant blind). 5 integration tests.
