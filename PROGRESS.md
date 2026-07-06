@@ -2,7 +2,7 @@
 
 ## Now
 - Phase/Milestone: **M1 — Spine**
-- Task in flight: **M1-6 Keyword retrieval (C2.5)** (next unchecked backlog item)
+- Task in flight: **M1-7 API surface (C5)** (next unchecked backlog item)
 - Last CI: remote CI green on main (P0 exit gate passed); local gate green for M1-1
 
 ## Blocked
@@ -19,6 +19,7 @@
 - [ ] `MOCK_PROVIDERS=true` set for local/CI so P0–M3 need no real API keys.
 
 ## Log (most recent first)
+- 2026-07-06 — M1-6 done: ChunkRetrieval (tenant-scoped repo) with Postgres full-text search (ts_rank ordered) and fetch(id); every result carries provenance + source link. Integration tests: hit with provenance/url, fetch provenance, cross-tenant isolation (search and fetch both blind to other tenants).
 - 2026-07-06 — M1-5 done: C3 deterministic compression — classify (html/markdown/text), builtin rule overlay, reducers (HTML→MD, dedup, fold, drop-regex boilerplate, grapheme-safe truncate via \X clusters). Fixture shows ≥30% reduction; property test proves truncation never splits grapheme clusters; reduction metrics logged per call.
 - 2026-07-06 — M1-4 done: ContentStore persists chunk rows + vault .md files in one transaction; ON CONFLICT DO NOTHING on content_hash makes re-ingest idempotent; partial-failure integration test proves no dangling rows or files (rollback + file cleanup). Hot path stays LLM-free.
 - 2026-07-06 — M1-3 done: deterministic chunker, ≤max_tokens splits (paragraph-first, whitespace-preferring hard split), content-addressed IDs = sha256(tenant_id + normalized content) (ADR-0005). Hypothesis property tests: idempotent IDs, zero new IDs on re-ingest, cross-tenant non-collision, budget respected, multibyte intact.

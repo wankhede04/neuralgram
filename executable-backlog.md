@@ -24,7 +24,7 @@ Legend: `Dep:` must be done first · `Gate:` triggers a human gate (BUILD-LOOP �
 - [x] **M1-3 Chunker (C2.1)** — ≤3k-token split; content-addressed IDs. *AC (property test):* identical input → identical chunk IDs; re-ingest creates zero duplicates. *Dep:* M1-1, M1-2.
 - [x] **M1-4 Content store + hot-path persist (C2.1/C6)** — single-transaction write of chunk rows + `.md` vault files; mark `pending_extraction`; **no LLM calls**. *AC:* partial-failure test leaves no dangling rows. *Dep:* M1-3.
 - [x] **M1-5 Deterministic compression (C3)** — classify + rule overlay (builtin layer) + deterministic reducers (HTML→MD, dedup, fold, drop-regex, truncate); grapheme-safe. *AC:* reduction on a fixture payload; multibyte text preserved; metrics logged. *Dep:* P0-6.
-- [ ] **M1-6 Keyword retrieval (C2.5)** — `search`(lexical), `fetch(id)` with provenance. *AC:* query returns chunks with source links; `fetch` returns provenance. *Dep:* M1-4.
+- [x] **M1-6 Keyword retrieval (C2.5)** — `search`(lexical), `fetch(id)` with provenance. *AC:* query returns chunks with source links; `fetch` returns provenance. *Dep:* M1-4.
 - [ ] **M1-7 API surface (C5)** — `POST /memory/ingest`, `GET /memory/search`, `GET /memory/chunks/{id}`; auth + tenant scoping. *AC:* OpenAPI docs; authz test. *Dep:* M1-6.
 - [ ] **M1-8 Cost/reduction metering (C8)** — record `tokens_in/out`, `reduction_pct` per compression call. *AC:* metric visible on dashboard for a real sample ingest. *Dep:* M1-5.
 - [ ] **M1-9 E2E spine test** — ingest real sample → search → fetch. *AC:* green e2e; idempotent re-ingest asserted. *Dep:* M1-7, M1-8.
