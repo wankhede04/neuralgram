@@ -60,7 +60,7 @@ def test_duplicate_signup_email_is_409(client: TestClient) -> None:
     response = client.post(
         "/auth/signup", json={"email": "bob@example.com", "password": "different-pw"}
     )
-    assert response.status_code == 409
+    assert response.status_code == 409, response.text
 
 
 def test_login_wrong_password_is_401(client: TestClient) -> None:
@@ -68,7 +68,7 @@ def test_login_wrong_password_is_401(client: TestClient) -> None:
     response = client.post(
         "/auth/login", json={"email": "carol@example.com", "password": "wrong-pw"}
     )
-    assert response.status_code == 401
+    assert response.status_code == 401, response.text
 
 
 def test_login_unknown_email_is_401(client: TestClient) -> None:
@@ -76,6 +76,29 @@ def test_login_unknown_email_is_401(client: TestClient) -> None:
         "/auth/login", json={"email": "nobody@example.com", "password": "whatever123"}
     )
     assert response.status_code == 401
+
+
+def test_login_401_bodies_are_indistinguishable(client: TestClient) -> None:
+    """No email enumeration: wrong password and unknown email look identical."""
+    client.post("/auth/signup", json={"email": "erin@example.com", "password": "correct-pw"})
+    wrong_password = client.post(
+        "/auth/login", json={"email": "erin@example.com", "password": "wrong-pw12"}
+    )
+    unknown_email = client.post(
+        "/auth/login", json={"email": "ghost@example.com", "password": "wrong-pw12"}
+    )
+    assert wrong_password.status_code == unknown_email.status_code == 401
+    assert wrong_password.json() == unknown_email.json()
+
+
+def test_password_out_of_range_is_422(client: TestClient) -> None:
+    """bcrypt's 72-byte limit is enforced by validation, not a 500."""
+    too_long = client.post(
+        "/auth/signup", json={"email": "long@example.com", "password": "a" * 73}
+    )
+    assert too_long.status_code == 422, too_long.text
+    empty = client.post("/auth/signup", json={"email": "empty@example.com", "password": ""})
+    assert empty.status_code == 422, empty.text
 
 
 def test_login_issues_new_key_and_invalidates_old(client: TestClient) -> None:

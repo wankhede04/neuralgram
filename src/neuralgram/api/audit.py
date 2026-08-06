@@ -1,4 +1,4 @@
-"""Audit trail for memory access (C7, M5-2): every /memory and /admin
+"""Audit trail for memory access (C7, M5-2): every /memory, /admin and /auth
 request is recorded — including denials — with the actor's key fingerprint."""
 
 import uuid
@@ -12,7 +12,7 @@ from neuralgram.storage.models import AuditEvent
 
 logger = get_logger(__name__)
 
-AUDITED_PREFIXES = ("/memory", "/admin")
+AUDITED_PREFIXES = ("/memory", "/admin", "/auth")
 
 
 class AuditMiddleware(BaseHTTPMiddleware):

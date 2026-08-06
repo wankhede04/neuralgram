@@ -1,7 +1,8 @@
 """GDPR erasure (C7, M5-3): cascade delete of a tenant's memory.
 
 Removes chunks, scores (embeddings included), entity links, entities,
-summaries, vault files, and queue jobs referencing the erased data.
+summaries, vault files, queue jobs referencing the erased data, and the
+signup identity row (which holds the tenant's email).
 `usage_events` and `audit_events` are deliberately retained: billing and
 security records fall under legitimate-interest retention, and they carry
 no memory content.
@@ -15,7 +16,7 @@ from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from neuralgram.observability.logging import get_logger
-from neuralgram.storage.models import Chunk, ChunkEntity, Entity, Job, Score, Summary
+from neuralgram.storage.models import Chunk, ChunkEntity, Entity, Job, Score, Summary, User
 
 logger = get_logger(__name__)
 
@@ -34,6 +35,7 @@ class ErasureReport(BaseModel):
     entities: int
     summaries: int
     jobs: int
+    users: int
     vault_files: int
 
 
@@ -76,6 +78,8 @@ class ErasureService:
             if entity_ids:
                 job_conditions.append(Job.payload["entity_id"].as_string().in_(entity_ids))
             jobs = await session.execute(delete(Job).where(or_(*job_conditions)))
+            # The signup identity row holds the tenant's email — personal data.
+            users = await session.execute(delete(User).where(User.tenant_id == tenant_id))
             await session.commit()
 
         vault_files = 0
@@ -91,6 +95,7 @@ class ErasureService:
             entities=_deleted(entities),
             summaries=_deleted(summaries),
             jobs=_deleted(jobs),
+            users=_deleted(users),
             vault_files=vault_files,
         )
         logger.info("erasure.done", tenant=tenant_id, **report.model_dump())
