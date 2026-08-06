@@ -141,6 +141,25 @@ class AuditEvent(Base):
     )
 
 
+class User(Base):
+    """Self-serve signup identity: one user = one tenant = one active API key.
+
+    No RLS here — this is a system identity table (like `jobs`), not
+    tenant-scoped data. Only ever queried via the system session factory,
+    before a tenant context can even be established (M5-2 extension).
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(255))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    hashed_key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    role: Mapped[str] = mapped_column(String(16), default="writer")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Job(Base):
     """A durable queue job (C2.2; queue semantics land in M2-1)."""
 
