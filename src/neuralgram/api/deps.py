@@ -1,9 +1,12 @@
 """API dependencies: authentication, RBAC roles, and tenant scoping (C5/C7).
 
-Roles (M5-2): reader < writer < admin. Per-key roles come from
-`Settings.api_key_roles` (default: writer). The actor recorded in audit
-logs is a SHA-256 fingerprint of the key — the raw key is never stored
-or logged (ADR-0006).
+Roles (M5-2): reader < writer < admin. Two key sources, checked in order:
+1. Static `Settings.api_key_roles` (env-configured, e.g. .env's my-test-key).
+2. DB-issued keys from self-serve signup/login (M5-2 extension) — looked up
+   by hash via the system session factory, since no tenant context exists
+   yet at this point in the request.
+The actor recorded in audit logs is a SHA-256 fingerprint of the key — the
+raw key is never stored or logged (ADR-0006).
 """
 
 import hashlib
@@ -11,6 +14,10 @@ import hmac
 
 from fastapi import HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
+from sqlalchemy import select
+
+from neuralgram.api.security import hash_api_key
+from neuralgram.storage.models import User
 
 _api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
 
@@ -23,10 +30,8 @@ def key_fingerprint(api_key: str) -> str:
     return hashlib.sha256(api_key.encode()).hexdigest()[:12]
 
 
-def _resolve(request: Request, api_key: str | None) -> tuple[str, str] | None:
-    """Return (tenant_id, role) for a valid key, else None."""
-    if not api_key:
-        return None
+def _resolve_static(request: Request, api_key: str) -> tuple[str, str] | None:
+    """Check the env-configured API_KEYS/API_KEY_ROLES dict."""
     settings = request.app.state.settings
     for configured_key, tenant_id in settings.api_keys.items():
         if hmac.compare_digest(configured_key, api_key):
@@ -35,13 +40,40 @@ def _resolve(request: Request, api_key: str | None) -> tuple[str, str] | None:
     return None
 
 
+async def _resolve_db(request: Request, api_key: str) -> tuple[str, str] | None:
+    """Check DB-issued keys from self-serve signup/login.
+
+    Skips gracefully if the app's lifespan never ran (e.g. bare unit tests
+    that construct a TestClient without the `with` context manager) --
+    system_session_factory won't exist yet in that case, and there is no
+    DB-issued key to find regardless.
+    """
+    factory = getattr(request.app.state, "system_session_factory", None)
+    if factory is None:
+        return None
+    hashed = hash_api_key(api_key)
+    async with factory() as session:
+        result = await session.execute(select(User).where(User.hashed_key == hashed))
+        user = result.scalar_one_or_none()
+    if user is None:
+        return None
+    return user.tenant_id, user.role
+
+
+async def _resolve(request: Request, api_key: str | None) -> tuple[str, str] | None:
+    """Return (tenant_id, role) for a valid key, else None."""
+    if not api_key:
+        return None
+    return _resolve_static(request, api_key) or await _resolve_db(request, api_key)
+
+
 async def require_tenant(request: Request, api_key: str | None = Security(_api_key_header)) -> str:
     """Resolve the calling tenant from the `x-api-key` header (any role).
 
     Stores tenant/role/actor on `request.state` for RBAC checks and audit.
     Raises 401 when the key is missing or unknown; keys are never logged.
     """
-    resolved = _resolve(request, api_key)
+    resolved = await _resolve(request, api_key)
     if resolved is None:
         request.state.audit_actor = "invalid-key"
         raise HTTPException(
