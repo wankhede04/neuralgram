@@ -53,3 +53,50 @@ def test_signup_returns_usable_key(client: TestClient) -> None:
         "/memory/search", params={"q": "x"}, headers={"x-api-key": body["api_key"]}
     )
     assert search.status_code == 200, search.text
+
+
+def test_duplicate_signup_email_is_409(client: TestClient) -> None:
+    client.post("/auth/signup", json={"email": "bob@example.com", "password": "pw12345678"})
+    response = client.post(
+        "/auth/signup", json={"email": "bob@example.com", "password": "different-pw"}
+    )
+    assert response.status_code == 409
+
+
+def test_login_wrong_password_is_401(client: TestClient) -> None:
+    client.post("/auth/signup", json={"email": "carol@example.com", "password": "correct-pw"})
+    response = client.post(
+        "/auth/login", json={"email": "carol@example.com", "password": "wrong-pw"}
+    )
+    assert response.status_code == 401
+
+
+def test_login_unknown_email_is_401(client: TestClient) -> None:
+    response = client.post(
+        "/auth/login", json={"email": "nobody@example.com", "password": "whatever123"}
+    )
+    assert response.status_code == 401
+
+
+def test_login_issues_new_key_and_invalidates_old(client: TestClient) -> None:
+    signup = client.post(
+        "/auth/signup", json={"email": "dave@example.com", "password": "original-pw"}
+    )
+    old_key = signup.json()["api_key"]
+
+    login = client.post(
+        "/auth/login", json={"email": "dave@example.com", "password": "original-pw"}
+    )
+    assert login.status_code == 200, login.text
+    new_key = login.json()["api_key"]
+    assert new_key != old_key
+
+    old_key_check = client.get(
+        "/memory/search", params={"q": "x"}, headers={"x-api-key": old_key}
+    )
+    assert old_key_check.status_code == 401
+
+    new_key_check = client.get(
+        "/memory/search", params={"q": "x"}, headers={"x-api-key": new_key}
+    )
+    assert new_key_check.status_code == 200, new_key_check.text
