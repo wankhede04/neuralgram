@@ -25,6 +25,17 @@ class Settings(BaseSettings):
     mock_providers: bool = True
     embedding_dim: int = 384
 
+    # Real completion provider (M4-2). Anthropic has no embeddings API, so
+    # `hint:embed` routes to OpenRouter (OpenAI-compatible /embeddings) below.
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-haiku-4-5-20251001"
+
+    # Real embedding provider, routed via OpenRouter's OpenAI-compatible API.
+    openrouter_api_key: str = ""
+    # Must output 384 dims to match storage.models.EMBEDDING_DIM (pgvector
+    # column is fixed-width); the :free NVIDIA models output 2048 and don't fit.
+    openrouter_embedding_model: str = "sentence-transformers/all-minilm-l6-v2"
+
     database_url: str = f"postgresql+asyncpg://{_DEV_DB_CREDENTIALS}@localhost:5432/neuralgram"
     redis_url: str = "redis://localhost:6379/0"
     vault_path: str = "./vault"

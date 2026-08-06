@@ -1,7 +1,7 @@
 """Model gateway (C4): the single integration point for all model access.
 
-Only the mock provider exists for now. Real provider adapters are gated
-work (external cost / D3 legality) and land in M2-3 / M4-2.
+Mock provider is the default. Real adapters (Anthropic, OpenAI) live in
+`router/providers.py`; `build_gateway` wires them in when MOCK_PROVIDERS=false.
 """
 
 import asyncio
@@ -16,7 +16,7 @@ from neuralgram.common.config import Settings
 from neuralgram.common.errors import ProviderError, RoutingError
 from neuralgram.observability import metrics
 from neuralgram.router.health import ProviderHealth
-from neuralgram.router.routing import Resolution, RouteTable, mock_route_table
+from neuralgram.router.routing import HINTS, Resolution, RouteTable, mock_route_table
 
 if TYPE_CHECKING:
     from neuralgram.router.metering import UsageMeter
@@ -247,17 +247,44 @@ def build_gateway(
 ) -> ModelGateway:
     """Construct the gateway for `settings`.
 
-    Raises `RuntimeError` if mock mode is off: real provider adapters are
-    a human-gated task (external cost, D3) and do not exist yet.
+    Mock mode (default): every hint served by the deterministic mock provider.
+    Real mode (`MOCK_PROVIDERS=false`): every hint except `embed` routes to
+    Anthropic (needs `ANTHROPIC_API_KEY`); `embed` routes to OpenRouter's
+    OpenAI-compatible `/embeddings` endpoint if `OPENROUTER_API_KEY` is set
+    (Anthropic has no embeddings API, M4-2), else falls back to the mock
+    BoW embedder.
     """
-    if not settings.mock_providers:
-        raise RuntimeError(
-            "Real model providers are not available: enabling them is a human gate "
-            "(external cost / D3). Set MOCK_PROVIDERS=true."
+    if settings.mock_providers:
+        providers: dict[str, ModelProvider] = {
+            "mock": MockProvider(embedding_dim=settings.embedding_dim)
+        }
+        return ModelGateway(
+            providers, RouteTable(mock_route_table(), default_provider="mock"), meter, cache
         )
-    providers: dict[str, ModelProvider] = {
-        "mock": MockProvider(embedding_dim=settings.embedding_dim)
+
+    if not settings.anthropic_api_key:
+        raise RuntimeError(
+            "MOCK_PROVIDERS=false requires ANTHROPIC_API_KEY to be set "
+            "(external-cost human gate, ADR-0013)."
+        )
+    from neuralgram.router.providers import AnthropicProvider, OpenAIProvider
+
+    providers = {
+        "mock": MockProvider(embedding_dim=settings.embedding_dim),
+        "anthropic": AnthropicProvider(api_key=settings.anthropic_api_key),
     }
+    routes: dict[str, tuple[str, str]] = {
+        hint: ("anthropic", settings.anthropic_model) for hint in HINTS if hint != "embed"
+    }
+    if settings.openrouter_api_key:
+        providers["openrouter"] = OpenAIProvider(
+            api_key=settings.openrouter_api_key,
+            base_url="https://openrouter.ai/api",
+            embedding_model=settings.openrouter_embedding_model,
+        )
+        routes["embed"] = ("openrouter", settings.openrouter_embedding_model)
+    else:
+        routes["embed"] = ("mock", "mock-embed")
     return ModelGateway(
-        providers, RouteTable(mock_route_table(), default_provider="mock"), meter, cache
+        providers, RouteTable(routes, default_provider="anthropic"), meter, cache
     )
