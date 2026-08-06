@@ -3,10 +3,12 @@ services:
     build: .
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      MOCK_PROVIDERS: "true"
       DATABASE_URL: postgresql+asyncpg://neuralgram:neuralgram@postgres:5432/neuralgram # pragma: allowlist secret
       REDIS_URL: redis://redis:6379/0
+      VAULT_PATH: /tmp/vault
     depends_on:
       postgres:
         condition: service_healthy
