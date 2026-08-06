@@ -71,7 +71,11 @@ async def test_one_step_rollback_with_data_then_roll_forward(async_url: str) -> 
         )
         await session.commit()
 
-    # Rollback one migration (0006 -> 0005): audit_events is sacrificed by design.
+    # Rollback one migration (0008 -> 0007): the users.tenant_id unique index
+    # and users.role CHECK constraint are sacrificed by design (0006's
+    # audit_events survives a *one-step* rollback now that 0007/0008 sit
+    # on top of it -- update this drill again if a later migration shifts
+    # what the current head's last step removes).
     down = _alembic(async_url, "downgrade", "-1")
     assert down.returncode == 0, down.stderr
 
@@ -86,7 +90,21 @@ async def test_one_step_rollback_with_data_then_roll_forward(async_url: str) -> 
                 text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
             )
         }
-        assert "audit_events" not in tables
+        assert "audit_events" in tables, "audit_events predates 0008, must survive its rollback"
+        indexes = {
+            row[0]
+            for row in await conn.execute(
+                text("SELECT indexname FROM pg_indexes WHERE schemaname = 'public'")
+            )
+        }
+        assert "ix_users_tenant_id_unique" not in indexes
+        constraints = {
+            row[0]
+            for row in await conn.execute(
+                text("SELECT conname FROM pg_constraint")
+            )
+        }
+        assert "ck_users_role" not in constraints
 
     # Roll forward again: schema fully restored.
     up = _alembic(async_url, "upgrade", "head")
