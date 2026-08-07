@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardLayout } from "./pages/DashboardLayout";
+import { IngestPage } from "./pages/IngestPage";
 import { AuthProvider } from "./context/AuthContext";
 
 function Placeholder({ name }: { name: string }) {
@@ -14,7 +15,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<AuthPage />} />
           <Route element={<DashboardLayout />}>
-            <Route path="/ingest" element={<Placeholder name="Ingest" />} />
+            <Route path="/ingest" element={<IngestPage />} />
             <Route path="/search" element={<Placeholder name="Search" />} />
             <Route path="/summaries" element={<Placeholder name="Summaries" />} />
             <Route path="/audit" element={<Placeholder name="Audit" />} />
