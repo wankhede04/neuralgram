@@ -58,3 +58,18 @@ see `.env.example`) for real model calls — an explicit cost decision (ADR-0013
 `docs/specification.md` (product spec) · `engineering-standards.md` ·
 `executable-backlog.md` (work queue) · `build-loop.md` (build process) ·
 `PROGRESS.md` (state) · `DECISIONS.md` (ADR log, 14 records incl. D1/D2/D3)
+
+## License
+
+Source-available under the [Elastic License 2.0](LICENSE) (ELv2) — **not**
+OSI-approved "open source," by design. In practice:
+
+- ✅ Free to read, run, modify, and **integrate into your own product** —
+  this is the intended use case (see the integration guide above).
+- ✅ Attribution is required: license and copyright notices must stay
+  intact in any copy or derivative.
+- ❌ You may not offer Neuralgram (or a derivative of it) to third parties
+  as a hosted or managed service — i.e. no rebranded/competing SaaS built
+  directly from this codebase.
+
+See [`LICENSE`](LICENSE) for the full legal text.
