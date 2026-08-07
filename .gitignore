@@ -21,3 +21,6 @@ htmlcov/
 
 # OS
 .DS_Store
+
+# Internal working docs (specs/plans) — not for the repo
+docs/superpowers/
