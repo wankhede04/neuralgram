@@ -8,6 +8,8 @@ Validated margin: **96.9% token-cost reduction** vs a naive pipeline (ADR-0012).
 
 | Endpoint | Role | Purpose |
 |---|---|---|
+| `POST /auth/signup` | public | Self-serve: create a tenant + API key |
+| `POST /auth/login` | public | Re-authenticate; issues a fresh key, invalidating the old one |
 | `POST /memory/ingest` | writer | Canonicalize → compress → chunk → persist; async enrichment follows |
 | `GET /memory/search?q=&mode=keyword\|semantic\|hybrid` | reader | Tenant-scoped retrieval with provenance |
 | `GET /memory/chunks/{id}` | reader | Fetch one chunk + provenance |
@@ -16,8 +18,14 @@ Validated margin: **96.9% token-cost reduction** vs a naive pipeline (ADR-0012).
 | `POST /admin/erase` | admin | GDPR erasure cascade for the caller's tenant |
 
 Auth: `x-api-key` header → tenant + role (`API_KEYS` / `API_KEY_ROLES`, JSON env or
-secrets dir). Tenant isolation: fail-closed Postgres RLS + repository-layer scoping
+secrets dir; self-serve via `/auth/signup` also resolves through the same header).
+Tenant isolation: fail-closed Postgres RLS + repository-layer scoping
 (ADR-0014) — the app DB role must be **non-superuser**.
+
+**Building a chatbot on top of Neuralgram?** See
+[`docs/integration-guide.md`](docs/integration-guide.md) for a full
+walkthrough: signup → ingest → a retrieval-augmented chatbot loop, with
+runnable Python examples.
 
 ## Development
 
@@ -35,8 +43,9 @@ docker compose up       # app + Postgres(pgvector) + Redis
 ```
 
 Dev/CI run with `MOCK_PROVIDERS=true` (deterministic mock model + feature-hashed
-embeddings; no keys, no spend). Enabling a real provider = configure its API key —
-an explicit cost decision (ADR-0013).
+embeddings; no keys, no spend). Set `MOCK_PROVIDERS=false` with `ANTHROPIC_API_KEY`
+(completions) and optionally `OPENROUTER_API_KEY` (embeddings, must output 384 dims —
+see `.env.example`) for real model calls — an explicit cost decision (ADR-0013).
 
 ## Operations
 
