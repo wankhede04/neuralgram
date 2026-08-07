@@ -25,6 +25,21 @@ function getStoredApiKey(): string | null {
   }
 }
 
+async function extractErrorMessage(response: Response, fallback: string): Promise<string> {
+  const text = await response.text();
+  try {
+    const parsed = JSON.parse(text);
+    if (typeof parsed.detail === "string") return parsed.detail;
+    if (Array.isArray(parsed.detail)) {
+      // FastAPI/pydantic 422 validation errors: array of {msg, loc, ...}
+      return parsed.detail.map((e: { msg?: string }) => e.msg).filter(Boolean).join("; ") || fallback;
+    }
+  } catch {
+    // not JSON, fall through
+  }
+  return text || fallback;
+}
+
 async function request<T>(
   method: "GET" | "POST",
   path: string,
@@ -47,14 +62,23 @@ async function request<T>(
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 
+  const isAuthEndpoint = path === "/auth/login" || path === "/auth/signup";
+
   if (response.status === 401) {
+    if (isAuthEndpoint) {
+      const message = await extractErrorMessage(response, "Invalid email or password.");
+      throw new ApiError(401, message);
+    }
     onUnauthorized?.();
     throw new ApiError(401, "Session expired or invalid. Please sign in again.");
   }
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new ApiError(response.status, text || `Request failed with status ${response.status}`);
+    const message = await extractErrorMessage(
+      response,
+      `Request failed with status ${response.status}`
+    );
+    throw new ApiError(response.status, message);
   }
 
   return response.json() as Promise<T>;

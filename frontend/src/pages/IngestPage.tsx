@@ -4,6 +4,7 @@ import { Card } from "../components/Card";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { Input } from "../components/Input";
 import { PageHeader } from "../components/PageHeader";
+import { SuccessBanner } from "../components/SuccessBanner";
 import { apiClient, ApiError } from "../lib/apiClient";
 
 type Message = { user: string; text: string };
@@ -69,10 +70,10 @@ export function IngestPage() {
       />
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       {result && (
-        <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          Ingested {result.documents} document(s): {result.chunks_inserted} chunk(s) inserted,{" "}
-          {result.chunks_skipped} skipped.
-        </div>
+        <SuccessBanner
+          message={`Ingested ${result.documents} document(s): ${result.chunks_inserted} chunk(s) inserted, ${result.chunks_skipped} skipped.`}
+          onDismiss={() => setResult(null)}
+        />
       )}
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">

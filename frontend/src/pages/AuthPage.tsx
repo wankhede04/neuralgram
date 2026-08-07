@@ -22,7 +22,7 @@ export function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, sessionEndedReason } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,6 +57,11 @@ export function AuthPage() {
           title={mode === "signup" ? "Create an account" : "Sign in"}
           subtitle="Access your Neuralgram tenant"
         />
+        {!error && sessionEndedReason && (
+          <p className="mb-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            {sessionEndedReason}
+          </p>
+        )}
         {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Email" type="email" value={email} onChange={setEmail} required />

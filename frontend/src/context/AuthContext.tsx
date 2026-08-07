@@ -9,6 +9,7 @@ export type Session = {
 
 type AuthContextValue = {
   session: Session | null;
+  sessionEndedReason: string | null;
   login: (session: Session) => void;
   logout: () => void;
 };
@@ -28,21 +29,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
+  const [sessionEndedReason, setSessionEndedReason] = useState<string | null>(null);
+
   const login = (newSession: Session) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
     setSession(newSession);
+    setSessionEndedReason(null);
   };
 
   const logout = () => {
     localStorage.removeItem(STORAGE_KEY);
     setSession(null);
+    setSessionEndedReason(null);
+  };
+
+  const logoutWithReason = (reason: string) => {
+    localStorage.removeItem(STORAGE_KEY);
+    setSession(null);
+    setSessionEndedReason(reason);
   };
 
   useEffect(() => {
-    setUnauthorizedHandler(logout);
+    setUnauthorizedHandler(() => logoutWithReason("Your session ended. Please sign in again."));
   }, []);
 
-  return <AuthContext.Provider value={{ session, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ session, sessionEndedReason, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthContextValue {

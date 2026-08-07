@@ -18,6 +18,7 @@ type SummaryNode = {
 export function SummariesPage() {
   const [tree, setTree] = useState("source");
   const [scopeId, setScopeId] = useState("");
+  const [level, setLevel] = useState("");
   const [results, setResults] = useState<SummaryNode[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,10 +30,11 @@ export function SummariesPage() {
     setLoading(true);
     setSearched(true);
     try {
-      const response = await apiClient.get<SummaryNode[]>("/memory/summaries", {
-        tree,
-        scope_id: scopeId,
-      });
+      const params: Record<string, string> = { tree, scope_id: scopeId };
+      if (tree === "source" && level.trim() !== "") {
+        params.level = level;
+      }
+      const response = await apiClient.get<SummaryNode[]>("/memory/summaries", params);
       setResults(response);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Lookup failed. Please try again.");
@@ -71,6 +73,11 @@ export function SummariesPage() {
               required
             />
           </div>
+          {tree === "source" && (
+            <div className="w-24">
+              <Input label="Level" type="number" value={level} onChange={setLevel} />
+            </div>
+          )}
           <Button type="submit" disabled={loading}>
             {loading ? "Loading..." : "Look up"}
           </Button>

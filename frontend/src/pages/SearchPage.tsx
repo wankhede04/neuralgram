@@ -22,11 +22,13 @@ export function SearchPage() {
   const [results, setResults] = useState<Chunk[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    setSearched(true);
     try {
       const response = await apiClient.get<Chunk[]>("/memory/search", {
         q: query,
@@ -75,12 +77,12 @@ export function SearchPage() {
           <Card key={chunk.chunk_id}>
             <p className="text-sm text-slate-800 whitespace-pre-wrap">{chunk.content_md}</p>
             <p className="mt-2 text-xs text-slate-400">
-              {chunk.provenance.author} · {chunk.source_id}
+              {chunk.provenance.author} · {chunk.source_id} · {chunk.provenance.timestamp}
               {chunk.rank !== undefined && ` · rank ${chunk.rank.toFixed(4)}`}
             </p>
           </Card>
         ))}
-        {results.length === 0 && !loading && (
+        {searched && results.length === 0 && !loading && (
           <p className="text-sm text-slate-400">No results yet — try a search above.</p>
         )}
       </div>

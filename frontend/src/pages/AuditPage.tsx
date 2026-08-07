@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { Input } from "../components/Input";
 import { PageHeader } from "../components/PageHeader";
 import { apiClient, ApiError } from "../lib/apiClient";
 
@@ -16,21 +18,37 @@ export function AuditPage() {
   const [records, setRecords] = useState<AuditRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [limit, setLimit] = useState("100");
 
-  useEffect(() => {
+  const fetchAudit = () => {
+    setLoading(true);
+    setError(null);
     apiClient
-      .get<AuditRecord[]>("/admin/audit", { limit: "100" })
+      .get<AuditRecord[]>("/admin/audit", { limit })
       .then(setRecords)
       .catch((err) =>
         setError(err instanceof ApiError ? err.message : "Failed to load audit log.")
       )
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchAudit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div>
       <PageHeader title="Audit" subtitle="Who queried whose memory" />
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+      <div className="mb-4 flex items-end gap-3">
+        <div className="w-24">
+          <Input label="Limit" type="number" value={limit} onChange={setLimit} />
+        </div>
+        <Button type="button" onClick={fetchAudit} disabled={loading}>
+          {loading ? "Loading..." : "Refresh"}
+        </Button>
+      </div>
       <Card>
         {loading ? (
           <p className="text-sm text-slate-400">Loading...</p>

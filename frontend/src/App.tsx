@@ -7,11 +7,17 @@ import { SummariesPage } from "./pages/SummariesPage";
 import { AuditPage } from "./pages/AuditPage";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/AuthContext";
+import { Card } from "./components/Card";
+import { PageHeader } from "./components/PageHeader";
 
 function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
   if (session?.role !== "admin") {
-    return <p className="text-slate-500">You don't have access to this page.</p>;
+    return (
+      <Card>
+        <PageHeader title="Access denied" subtitle="You don't have access to this page." />
+      </Card>
+    );
   }
   return <>{children}</>;
 }
