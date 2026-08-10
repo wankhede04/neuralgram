@@ -3,12 +3,7 @@ import { Footer } from "../components/Footer";
 import { Navbar } from "../components/Navbar";
 import { DOCS_URL } from "../lib/links";
 
-const STEPS = [
-  { title: "Ingest", body: "Send conversation history (Slack-shaped export today) via one API call; it's chunked, compressed, and stored per-tenant." },
-  { title: "Search", body: "Query it back with keyword, semantic, or hybrid search — real embeddings, not string matching." },
-  { title: "Summarize", body: "As data accumulates, Neuralgram automatically rolls it up into AI-written summaries — per conversation, per topic, per day." },
-  { title: "Connect", body: "Call it from your own chatbot's backend before each LLM call, so responses are grounded in what was actually said before." },
-];
+const STEPS = ["Ingest", "Search", "Summarize", "Connect"];
 
 const heroGradient = {
   background: "linear-gradient(135deg, #eef6f8 0%, #f4f9fb 40%, #eaf3f6 100%)",
@@ -71,21 +66,42 @@ export function LandingPage() {
         >
           Four steps, start to finish.
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {STEPS.map((step, i) => (
-            <div
-              key={step.title}
-              className="rounded-[10px] p-5"
-              style={{ backgroundColor: "#fbfdfd", border: "1px solid #dfe8e9" }}
-            >
-              <div className="text-sm font-semibold mb-1" style={{ color: "#17594f" }}>
-                {i + 1}. {step.title}
-              </div>
-              <div className="text-sm" style={{ color: "#5b6a6c" }}>
-                {step.body}
-              </div>
-            </div>
-          ))}
+        <div
+          className="rounded-[10px] p-6 overflow-x-auto"
+          style={{ backgroundColor: "#fbfdfd", border: "1px solid #dfe8e9" }}
+        >
+          <svg viewBox="0 0 620 120" width="100%" height="120" role="img" aria-label="Ingest, then Search, then Summarize, then Connect">
+            {STEPS.map((label, i) => {
+              const x = 10 + i * 155;
+              return (
+                <g key={label}>
+                  {i > 0 && (
+                    <line
+                      x1={x - 45}
+                      y1="50"
+                      x2={x - 5}
+                      y2="50"
+                      stroke="#17594f"
+                      strokeWidth="2"
+                      markerEnd="url(#step-arrow)"
+                    />
+                  )}
+                  <circle cx={x + 40} cy="50" r="26" fill={i === 0 ? "#17594f" : "#ffffff"} stroke="#17594f" strokeWidth="2" />
+                  <text x={x + 40} y="55" textAnchor="middle" fontSize="14" fontWeight="700" fill={i === 0 ? "#ffffff" : "#17594f"}>
+                    {i + 1}
+                  </text>
+                  <text x={x + 40} y="98" textAnchor="middle" fontSize="13" fontWeight="600" fill="#111">
+                    {label}
+                  </text>
+                </g>
+              );
+            })}
+            <defs>
+              <marker id="step-arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#17594f" />
+              </marker>
+            </defs>
+          </svg>
         </div>
       </section>
 
