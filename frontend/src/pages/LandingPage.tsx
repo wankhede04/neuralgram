@@ -1,44 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
 
-const INTEGRATION_SNIPPET = `import anthropic
-import requests
-
-NEURALGRAM_API_KEY = "your-api-key-from-step-1"
-NEURALGRAM_URL = "http://localhost:8000"
-
-claude = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
-
-
-def fetch_context(query: str, limit: int = 5) -> str:
-    response = requests.get(
-        f"{NEURALGRAM_URL}/memory/search",
-        headers={"x-api-key": NEURALGRAM_API_KEY},
-        params={"q": query, "mode": "hybrid", "limit": limit},
-    )
-    response.raise_for_status()
-    chunks = response.json()
-    if not chunks:
-        return ""
-    return "\\n\\n".join(f"- {chunk['content_md']}" for chunk in chunks)
-
-
-def chat(user_message: str) -> str:
-    context = fetch_context(user_message)
-
-    system_prompt = (
-        "You are a helpful support assistant. Answer using ONLY the context "
-        "below. If the context doesn't cover the question, say you don't know."
-        f"\\n\\nContext:\\n{context}"
-    )
-
-    reply = claude.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=300,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
-    )
-    return reply.content[0].text`;
-
 const GITHUB_URL = "https://github.com/wankhede04/neuralgram";
 const DOCS_URL = "https://github.com/wankhede04/neuralgram/blob/main/docs/integration-guide.md";
 const LICENSE_URL = "https://github.com/wankhede04/neuralgram/blob/main/LICENSE";
@@ -161,19 +122,39 @@ export function LandingPage() {
           Neuralgram is a backend service, not a replacement chatbot — it's the memory
           layer underneath whatever LLM or framework you're already using.
         </p>
-        <div
-          className="rounded-[10px] p-5 overflow-x-auto"
-          style={{ backgroundColor: "#fbfdfd", border: "1px solid #dfe8e9" }}
-        >
-          <pre className="text-xs leading-relaxed" style={{ color: "#1a1a1a" }}>
-            <code>{INTEGRATION_SNIPPET}</code>
-          </pre>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div
+            className="rounded-[10px] p-5"
+            style={{ backgroundColor: "#fbfdfd", border: "1px solid #dfe8e9" }}
+          >
+            <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: "#9aa5a6" }}>
+              Without Neuralgram
+            </div>
+            <p className="text-sm leading-relaxed" style={{ color: "#5b6a6c" }}>
+              Your chatbot starts every session from zero. It can't recall what a
+              customer said last week, so it either asks them to repeat themselves
+              or answers with a generic, ungrounded guess.
+            </p>
+          </div>
+          <div
+            className="rounded-[10px] p-5"
+            style={{ backgroundColor: "#fbfdfd", border: `1px solid #17594f` }}
+          >
+            <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: "#17594f" }}>
+              With Neuralgram
+            </div>
+            <p className="text-sm leading-relaxed" style={{ color: "#3f4d4e" }}>
+              Before replying, your chatbot asks Neuralgram what's relevant from
+              everything said before — then answers grounded in the real history,
+              not a guess.
+            </p>
+          </div>
         </div>
         <a
           href={DOCS_URL}
           target="_blank"
           rel="noreferrer"
-          className="inline-block mt-4 text-sm hover:underline"
+          className="inline-block mt-6 text-sm hover:underline"
           style={{ color: "#17594f" }}
         >
           Read the full integration guide →
