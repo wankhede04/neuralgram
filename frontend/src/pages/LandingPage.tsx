@@ -33,7 +33,7 @@ export function LandingPage() {
             Docs
           </a>
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/demo")}
             className="rounded-full px-5 py-2 text-white text-sm"
             style={{ backgroundColor: "#17594f" }}
           >
@@ -59,7 +59,7 @@ export function LandingPage() {
           in a few lines of code.
         </p>
         <button
-          onClick={() => navigate("/login")}
+          onClick={() => navigate("/demo")}
           className="rounded-full px-8 py-3 text-white font-medium"
           style={{ backgroundColor: "#17594f" }}
         >

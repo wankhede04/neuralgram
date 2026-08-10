@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { LandingPage } from "./pages/LandingPage";
+import { DemoPage } from "./pages/DemoPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardLayout } from "./pages/DashboardLayout";
 import { IngestPage } from "./pages/IngestPage";
@@ -29,6 +30,7 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/demo" element={<DemoPage />} />
           <Route path="/login" element={<AuthPage />} />
           <Route element={<DashboardLayout />}>
             <Route path="/ingest" element={<IngestPage />} />
