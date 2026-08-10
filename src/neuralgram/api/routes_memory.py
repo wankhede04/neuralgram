@@ -42,6 +42,15 @@ async def ingest_endpoint(
     body: IngestRequest, tenant_id: WriterTenant, request: Request
 ) -> IngestResponse:
     """Canonicalize `payload`, chunk it, and persist rows + vault files atomically."""
+    demo_tenant_id = request.app.state.settings.demo_tenant_id
+    if demo_tenant_id and tenant_id == demo_tenant_id:
+        message_count = len(body.payload.get("messages", []))
+        if message_count > 3:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Demo tenant is limited to 3 messages per ingest call",
+            )
+
     try:
         docs = canonicalize(body.source_id, body.payload, body.source_type)
     except UnsupportedSourceError as exc:

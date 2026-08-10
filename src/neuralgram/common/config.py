@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     vault_path: str = "./vault"
 
+    # If set, POST /memory/ingest caps this exact tenant to 3 messages per
+    # call (frontend/, M6 unauthenticated demo page). No effect on any
+    # other tenant.
+    demo_tenant_id: str = ""
+
     # Maps API key -> tenant_id (ADR-0006). Empty by default: no key, no access.
     api_keys: dict[str, str] = {}
 
