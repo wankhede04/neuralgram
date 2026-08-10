@@ -122,33 +122,33 @@ export function LandingPage() {
           Neuralgram is a backend service, not a replacement chatbot — it's the memory
           layer underneath whatever LLM or framework you're already using.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div
-            className="rounded-[10px] p-5"
-            style={{ backgroundColor: "#fbfdfd", border: "1px solid #dfe8e9" }}
-          >
-            <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: "#9aa5a6" }}>
-              Without Neuralgram
-            </div>
-            <p className="text-sm leading-relaxed" style={{ color: "#5b6a6c" }}>
-              Your chatbot starts every session from zero. It can't recall what a
-              customer said last week, so it either asks them to repeat themselves
-              or answers with a generic, ungrounded guess.
-            </p>
-          </div>
-          <div
-            className="rounded-[10px] p-5"
-            style={{ backgroundColor: "#fbfdfd", border: `1px solid #17594f` }}
-          >
-            <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: "#17594f" }}>
-              With Neuralgram
-            </div>
-            <p className="text-sm leading-relaxed" style={{ color: "#3f4d4e" }}>
-              Before replying, your chatbot asks Neuralgram what's relevant from
-              everything said before — then answers grounded in the real history,
-              not a guess.
-            </p>
-          </div>
+        <div
+          className="rounded-[10px] p-6"
+          style={{ backgroundColor: "#fbfdfd", border: "1px solid #dfe8e9" }}
+        >
+          <svg viewBox="0 0 480 160" width="100%" height="160" role="img" aria-label="Your Chatbot connects to Neuralgram, which grounds the response sent to your LLM">
+            <rect x="10" y="55" width="130" height="60" rx="10" fill="#ffffff" stroke="#dfe8e9" />
+            <text x="75" y="80" textAnchor="middle" fontSize="12" fill="#111" fontWeight="600">Your Chatbot</text>
+            <text x="75" y="98" textAnchor="middle" fontSize="10" fill="#7a8a8c">user asks a question</text>
+
+            <line x1="140" y1="85" x2="180" y2="85" stroke="#17594f" strokeWidth="2" markerEnd="url(#flow-arrow)" />
+
+            <rect x="180" y="45" width="140" height="80" rx="10" fill="#17594f" />
+            <text x="250" y="78" textAnchor="middle" fontSize="12" fill="#ffffff" fontWeight="600">◆ Neuralgram</text>
+            <text x="250" y="96" textAnchor="middle" fontSize="10" fill="#dfece8">finds relevant memory</text>
+
+            <line x1="320" y1="85" x2="360" y2="85" stroke="#17594f" strokeWidth="2" markerEnd="url(#flow-arrow)" />
+
+            <rect x="360" y="55" width="115" height="60" rx="10" fill="#ffffff" stroke="#dfe8e9" />
+            <text x="417" y="80" textAnchor="middle" fontSize="12" fill="#111" fontWeight="600">Your LLM</text>
+            <text x="417" y="98" textAnchor="middle" fontSize="10" fill="#7a8a8c">answers, grounded</text>
+
+            <defs>
+              <marker id="flow-arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#17594f" />
+              </marker>
+            </defs>
+          </svg>
         </div>
         <a
           href={DOCS_URL}
