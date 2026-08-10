@@ -1,8 +1,7 @@
-import { Link, useNavigate } from "react-router-dom";
-
-const GITHUB_URL = "https://github.com/wankhede04/neuralgram";
-const DOCS_URL = "https://github.com/wankhede04/neuralgram/blob/main/docs/integration-guide.md";
-const LICENSE_URL = "https://github.com/wankhede04/neuralgram/blob/main/LICENSE";
+import { useNavigate } from "react-router-dom";
+import { Footer } from "../components/Footer";
+import { Navbar } from "../components/Navbar";
+import { DOCS_URL } from "../lib/links";
 
 const STEPS = [
   { title: "Ingest", body: "Send conversation history (Slack-shaped export today) via one API call; it's chunked, compressed, and stored per-tenant." },
@@ -20,27 +19,7 @@ export function LandingPage() {
 
   return (
     <div style={heroGradient} className="min-h-screen font-sans text-[#1a1a1a]">
-      {/* Navbar */}
-      <nav className="flex items-center justify-between px-8 py-6 max-w-5xl mx-auto">
-        <span className="text-2xl italic" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "#17594f" }}>
-          ◆ Neuralgram
-        </span>
-        <div className="flex items-center gap-6 text-sm">
-          <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="hover:underline" style={{ color: "#17594f" }}>
-            GitHub
-          </a>
-          <a href={DOCS_URL} target="_blank" rel="noreferrer" className="hover:underline" style={{ color: "#17594f" }}>
-            Docs
-          </a>
-          <button
-            onClick={() => navigate("/demo")}
-            className="rounded-full px-5 py-2 text-white text-sm"
-            style={{ backgroundColor: "#17594f" }}
-          >
-            Try a Demo
-          </button>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero */}
       <section className="max-w-3xl mx-auto px-8 pt-16 pb-20 text-center">
@@ -161,21 +140,7 @@ export function LandingPage() {
         </a>
       </section>
 
-      {/* Footer */}
-      <footer className="max-w-3xl mx-auto px-8 py-10 text-sm" style={{ color: "#7a8a8c" }}>
-        <div className="flex gap-6 mb-3">
-          <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="hover:underline" style={{ color: "#17594f" }}>
-            GitHub
-          </a>
-          <a href={LICENSE_URL} target="_blank" rel="noreferrer" className="hover:underline" style={{ color: "#17594f" }}>
-            License (Elastic License 2.0)
-          </a>
-          <Link to="/login" className="hover:underline" style={{ color: "#17594f" }}>
-            Try a Demo
-          </Link>
-        </div>
-        <p>© 2026 Neuralgram. Source available under the Elastic License 2.0.</p>
-      </footer>
+      <Footer />
     </div>
   );
 }

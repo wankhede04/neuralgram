@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Footer } from "../components/Footer";
+import { Navbar } from "../components/Navbar";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const DEMO_API_KEY = import.meta.env.VITE_DEMO_API_KEY || "";
@@ -210,6 +212,7 @@ function SummariesDemo() {
 export function DemoPage() {
   return (
     <div style={heroGradient} className="min-h-screen font-sans text-[#1a1a1a]">
+      <Navbar />
       <div className="max-w-3xl mx-auto px-8 py-12">
         <h1 className="text-4xl mb-3" style={headingStyle}>Try it yourself</h1>
         <p className="text-base mb-10" style={{ color: "#5b6a6c" }}>
@@ -245,6 +248,7 @@ export function DemoPage() {
           </Link>
         </p>
       </div>
+      <Footer />
     </div>
   );
 }
