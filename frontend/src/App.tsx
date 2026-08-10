@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { LandingPage } from "./pages/LandingPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardLayout } from "./pages/DashboardLayout";
 import { IngestPage } from "./pages/IngestPage";
@@ -27,7 +28,8 @@ export function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<AuthPage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<AuthPage />} />
           <Route element={<DashboardLayout />}>
             <Route path="/ingest" element={<IngestPage />} />
             <Route path="/search" element={<SearchPage />} />
