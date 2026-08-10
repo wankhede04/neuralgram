@@ -49,9 +49,7 @@ def test_signup_returns_usable_key(client: TestClient) -> None:
     assert body["role"] == "writer"
     assert body["tenant_id"].startswith("user-")
 
-    search = client.get(
-        "/memory/search", params={"q": "x"}, headers={"x-api-key": body["api_key"]}
-    )
+    search = client.get("/memory/search", params={"q": "x"}, headers={"x-api-key": body["api_key"]})
     assert search.status_code == 200, search.text
 
 
@@ -93,9 +91,7 @@ def test_login_401_bodies_are_indistinguishable(client: TestClient) -> None:
 
 def test_password_out_of_range_is_422(client: TestClient) -> None:
     """bcrypt's 72-byte limit is enforced by validation, not a 500."""
-    too_long = client.post(
-        "/auth/signup", json={"email": "long@example.com", "password": "a" * 73}
-    )
+    too_long = client.post("/auth/signup", json={"email": "long@example.com", "password": "a" * 73})
     assert too_long.status_code == 422, too_long.text
     empty = client.post("/auth/signup", json={"email": "empty@example.com", "password": ""})
     assert empty.status_code == 422, empty.text
@@ -114,12 +110,8 @@ def test_login_issues_new_key_and_invalidates_old(client: TestClient) -> None:
     new_key = login.json()["api_key"]
     assert new_key != old_key
 
-    old_key_check = client.get(
-        "/memory/search", params={"q": "x"}, headers={"x-api-key": old_key}
-    )
+    old_key_check = client.get("/memory/search", params={"q": "x"}, headers={"x-api-key": old_key})
     assert old_key_check.status_code == 401
 
-    new_key_check = client.get(
-        "/memory/search", params={"q": "x"}, headers={"x-api-key": new_key}
-    )
+    new_key_check = client.get("/memory/search", params={"q": "x"}, headers={"x-api-key": new_key})
     assert new_key_check.status_code == 200, new_key_check.text

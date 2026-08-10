@@ -99,10 +99,7 @@ async def test_one_step_rollback_with_data_then_roll_forward(async_url: str) -> 
         }
         assert "ix_users_tenant_id_unique" not in indexes
         constraints = {
-            row[0]
-            for row in await conn.execute(
-                text("SELECT conname FROM pg_constraint")
-            )
+            row[0] for row in await conn.execute(text("SELECT conname FROM pg_constraint"))
         }
         assert "ck_users_role" not in constraints
 

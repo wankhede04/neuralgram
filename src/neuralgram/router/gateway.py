@@ -285,6 +285,4 @@ def build_gateway(
         routes["embed"] = ("openrouter", settings.openrouter_embedding_model)
     else:
         routes["embed"] = ("mock", "mock-embed")
-    return ModelGateway(
-        providers, RouteTable(routes, default_provider="anthropic"), meter, cache
-    )
+    return ModelGateway(providers, RouteTable(routes, default_provider="anthropic"), meter, cache)
