@@ -1,4 +1,4 @@
-"""Real provider adapters (C4, M4-2): Anthropic and OpenAI.
+"""Real provider adapters (C4, M4-2): Anthropic, OpenAI, and Jina AI.
 
 Adapters are contract-tested against mock transports (standards §4); any
 network/HTTP/parse failure raises `ProviderError` so the gateway's
@@ -133,6 +133,70 @@ class OpenAIProvider:
             return dict(response.json())
         except httpx.HTTPError as exc:
             raise ProviderError(f"openai: {exc}") from exc
+
+    async def close(self) -> None:
+        """Release the HTTP connection pool."""
+        await self._client.aclose()
+
+
+class JinaProvider:
+    """Adapter for Jina AI's embeddings API (OpenAI-compatible response shape).
+
+    Embeddings-only: `hint:embed` is the only route this provider serves.
+    """
+
+    name = "jina"
+
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://api.jina.ai",
+        embedding_model: str = "jina-embeddings-v3",
+        dimensions: int = 384,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
+        self._embedding_model = embedding_model
+        self._dimensions = dimensions
+        self._client = httpx.AsyncClient(
+            base_url=base_url,
+            headers={
+                "authorization": f"Bearer {api_key}",
+                "content-type": "application/json",
+                # Cloudflare fronts api.jina.ai and returns a bare 403 for
+                # the default httpx/urllib user agent -- a browser-like UA
+                # is required for the request to be accepted at all.
+                "user-agent": "Mozilla/5.0 (compatible; neuralgram/1.0)",
+            },
+            timeout=DEFAULT_TIMEOUT_SECONDS,
+            transport=transport,
+        )
+
+    async def complete(self, messages: list[Message], model_or_hint: str) -> CompletionResult:
+        """Jina is embeddings-only in this integration; route completions elsewhere."""
+        raise ProviderError("jina provides no completions API in this integration")
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        """POST /v1/embeddings; truncates to `dimensions` via Jina's native param."""
+        payload = {
+            "model": self._embedding_model,
+            "task": "text-matching",
+            "dimensions": self._dimensions,
+            "input": texts,
+        }
+        data = await self._post("/v1/embeddings", payload)
+        try:
+            items = sorted(data["data"], key=lambda item: item["index"])
+            return [list(map(float, item["embedding"])) for item in items]
+        except (KeyError, TypeError) as exc:
+            raise ProviderError(f"jina: unexpected embeddings shape: {exc}") from exc
+
+    async def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            response = await self._client.post(path, json=payload)
+            response.raise_for_status()
+            return dict(response.json())
+        except httpx.HTTPError as exc:
+            raise ProviderError(f"jina: {exc}") from exc
 
     async def close(self) -> None:
         """Release the HTTP connection pool."""

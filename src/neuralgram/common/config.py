@@ -26,11 +26,19 @@ class Settings(BaseSettings):
     embedding_dim: int = 384
 
     # Real completion provider (M4-2). Anthropic has no embeddings API, so
-    # `hint:embed` routes to OpenRouter (OpenAI-compatible /embeddings) below.
+    # `hint:embed` routes elsewhere -- see jina_api_key/openrouter_api_key.
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5-20251001"
 
-    # Real embedding provider, routed via OpenRouter's OpenAI-compatible API.
+    # Real embedding provider. Checked first: Jina AI's own API (native
+    # `dimensions` truncation, no OpenAI-compatible base_url needed). Falls
+    # back to OpenRouter if unset, then to the mock provider if neither key
+    # is configured.
+    jina_api_key: str = ""
+    jina_embedding_model: str = "jina-embeddings-v3"
+
+    # Fallback embedding provider, routed via OpenRouter's OpenAI-compatible
+    # API, used only when jina_api_key is unset.
     openrouter_api_key: str = ""
     # Must output 384 dims to match storage.models.EMBEDDING_DIM (pgvector
     # column is fixed-width); the :free NVIDIA models output 2048 and don't fit.

@@ -12,7 +12,7 @@ import pytest
 
 from neuralgram.common.errors import ProviderError
 from neuralgram.router.gateway import Message
-from neuralgram.router.providers import AnthropicProvider, OpenAIProvider
+from neuralgram.router.providers import AnthropicProvider, JinaProvider, OpenAIProvider
 
 MESSAGES = [Message(role="user", content="ping")]
 
@@ -96,6 +96,43 @@ async def test_openai_embeddings_preserve_input_order() -> None:
     await provider.close()
 
 
+async def test_jina_request_shape_and_parsing() -> None:
+    transport, seen = _transport(
+        {
+            "data": [
+                {"index": 1, "embedding": [0.3, 0.4]},
+                {"index": 0, "embedding": [0.1, 0.2]},
+            ]
+        }
+    )
+    provider = JinaProvider(
+        "test-key", dimensions=384, transport=transport
+    )  # pragma: allowlist secret
+
+    vectors = await provider.embed(["first", "second"])
+
+    request = seen[0]
+    assert request.url.path == "/v1/embeddings"
+    assert request.headers["authorization"] == "Bearer test-key"
+    # Cloudflare fronts api.jina.ai and 403s the default httpx/urllib UA.
+    assert "python" not in request.headers["user-agent"].lower()
+    body = json.loads(request.content)
+    assert body["model"] == "jina-embeddings-v3"
+    assert body["dimensions"] == 384
+    assert body["input"] == ["first", "second"]
+
+    assert vectors == [[0.1, 0.2], [0.3, 0.4]], "results must be re-sorted by index"
+    await provider.close()
+
+
+async def test_jina_has_no_completions() -> None:
+    transport, _ = _transport({})
+    provider = JinaProvider("test-key", transport=transport)  # pragma: allowlist secret
+    with pytest.raises(ProviderError, match="no completions"):
+        await provider.complete(MESSAGES, "n/a")
+    await provider.close()
+
+
 async def test_anthropic_has_no_embeddings() -> None:
     transport, _ = _transport({})
     provider = AnthropicProvider("test-key", transport=transport)  # pragma: allowlist secret
@@ -109,13 +146,17 @@ async def test_http_errors_become_provider_errors(status: int) -> None:
     transport, _ = _transport({"error": "boom"}, status_code=status)
     anthropic = AnthropicProvider("test-key", transport=transport)  # pragma: allowlist secret
     openai = OpenAIProvider("test-key", transport=transport)  # pragma: allowlist secret
+    jina = JinaProvider("test-key", transport=transport)  # pragma: allowlist secret
 
     with pytest.raises(ProviderError, match="anthropic"):
         await anthropic.complete(MESSAGES, "claude-opus-4-7")
     with pytest.raises(ProviderError, match="openai"):
         await openai.complete(MESSAGES, "gpt-4o")
+    with pytest.raises(ProviderError, match="jina"):
+        await jina.embed(["text"])
     await anthropic.close()
     await openai.close()
+    await jina.close()
 
 
 async def test_malformed_response_becomes_provider_error() -> None:

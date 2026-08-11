@@ -254,10 +254,10 @@ def build_gateway(
 
     Mock mode (default): every hint served by the deterministic mock provider.
     Real mode (`MOCK_PROVIDERS=false`): every hint except `embed` routes to
-    Anthropic (needs `ANTHROPIC_API_KEY`); `embed` routes to OpenRouter's
-    OpenAI-compatible `/embeddings` endpoint if `OPENROUTER_API_KEY` is set
-    (Anthropic has no embeddings API, M4-2), else falls back to the mock
-    BoW embedder.
+    Anthropic (needs `ANTHROPIC_API_KEY`). `embed` prefers Jina AI
+    (`JINA_API_KEY`) if set, falls back to OpenRouter's OpenAI-compatible
+    `/embeddings` endpoint if `OPENROUTER_API_KEY` is set instead (Anthropic
+    has no embeddings API, M4-2), else falls back to the mock BoW embedder.
     """
     if settings.mock_providers:
         providers: dict[str, ModelProvider] = {
@@ -272,7 +272,7 @@ def build_gateway(
             "MOCK_PROVIDERS=false requires ANTHROPIC_API_KEY to be set "
             "(external-cost human gate, ADR-0013)."
         )
-    from neuralgram.router.providers import AnthropicProvider, OpenAIProvider
+    from neuralgram.router.providers import AnthropicProvider, JinaProvider, OpenAIProvider
 
     providers = {
         "mock": MockProvider(embedding_dim=settings.embedding_dim),
@@ -281,7 +281,14 @@ def build_gateway(
     routes: dict[str, tuple[str, str]] = {
         hint: ("anthropic", settings.anthropic_model) for hint in HINTS if hint != "embed"
     }
-    if settings.openrouter_api_key:
+    if settings.jina_api_key:
+        providers["jina"] = JinaProvider(
+            api_key=settings.jina_api_key,
+            embedding_model=settings.jina_embedding_model,
+            dimensions=settings.embedding_dim,
+        )
+        routes["embed"] = ("jina", settings.jina_embedding_model)
+    elif settings.openrouter_api_key:
         providers["openrouter"] = OpenAIProvider(
             api_key=settings.openrouter_api_key,
             base_url="https://openrouter.ai/api",
