@@ -5,7 +5,10 @@ type CardProps = {
 
 export function Card({ children, className = "" }: CardProps) {
   return (
-    <div className={`rounded-lg border border-slate-200 bg-white p-6 shadow-sm ${className}`}>
+    <div
+      className={`rounded-[10px] p-6 ${className}`}
+      style={{ backgroundColor: "#fbfdfd", border: "1px solid #dfe8e9" }}
+    >
       {children}
     </div>
   );

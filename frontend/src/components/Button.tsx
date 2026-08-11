@@ -6,9 +6,9 @@ type ButtonProps = {
   disabled?: boolean;
 };
 
-const VARIANT_CLASSES: Record<string, string> = {
-  primary: "bg-slate-900 text-white hover:bg-slate-700",
-  secondary: "bg-white text-slate-900 border border-slate-300 hover:bg-slate-50",
+const VARIANT_STYLES: Record<string, React.CSSProperties> = {
+  primary: { backgroundColor: "#17594f", color: "#fff" },
+  secondary: { backgroundColor: "#fff", color: "#3f4d4e", border: "1px solid #dfe8e9" },
 };
 
 export function Button({
@@ -23,7 +23,8 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${VARIANT_CLASSES[variant]}`}
+      style={VARIANT_STYLES[variant]}
+      className="px-4 py-2 rounded-full text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {children}
     </button>
