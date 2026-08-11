@@ -9,7 +9,7 @@ end to end; real provider prices join the table when providers do (M4-2).
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from neuralgram.common.errors import NeuralgramError
@@ -97,7 +97,9 @@ class UsageMeter:
 
             is_embed = hint == "embed"
             filter_clause = (
-                UsageEvent.hint == "embed" if is_embed else UsageEvent.hint != "embed"
+                UsageEvent.hint == "embed"
+                if is_embed
+                else or_(UsageEvent.hint != "embed", UsageEvent.hint.is_(None))
             )
             count = (
                 await session.execute(

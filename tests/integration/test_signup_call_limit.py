@@ -108,3 +108,16 @@ async def test_static_tenant_unaffected_even_after_many_calls(meter: UsageMeter)
     tenant_id = f"{STATIC_TENANT}-{uuid.uuid4().hex}"
     await _seed_events(meter, tenant_id, "summarize", 10)
     await meter.check_signup_call_limit(tenant_id, "summarize")
+
+
+async def test_null_hint_completion_call_counts_toward_completion_cap(
+    meter: UsageMeter,
+) -> None:
+    tenant_id = await _seed_signup_tenant(meter)
+    # A bare-model completion call records hint=None; it must still count
+    # as a completion (non-embed) call, not be silently excluded by NULL
+    # three-valued logic in the SQL filter.
+    await meter.record(tenant_id, "anthropic", "some-model", None, 10, 10)
+    await _seed_events(meter, tenant_id, "summarize", 2)
+    with pytest.raises(SignupCallLimitExceededError):
+        await meter.check_signup_call_limit(tenant_id, "summarize")
