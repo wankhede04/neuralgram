@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     # other tenant.
     demo_tenant_id: str = ""
 
+    # Per-IP daily request cap for the unauthenticated demo tenant, enforced
+    # via Redis (ADR-needed: protects API cost from a single shared demo key
+    # otherwise being callable without limit). No effect on signed-up/static
+    # tenants.
+    demo_ip_daily_limit: int = 20
+
     # Maps API key -> tenant_id (ADR-0006). Empty by default: no key, no access.
     api_keys: dict[str, str] = {}
 

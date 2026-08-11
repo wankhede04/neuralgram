@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from neuralgram import __version__
 from neuralgram.api.audit import AuditMiddleware
+from neuralgram.api.rate_limit import DemoIpRateLimiter, DemoRateLimitExceededError
 from neuralgram.api.routes_admin import router as admin_router
 from neuralgram.api.routes_auth import router as auth_router
 from neuralgram.api.routes_memory import router as memory_router
@@ -29,7 +30,12 @@ from neuralgram.observability.queue_monitor import QueueDepthMonitor
 from neuralgram.observability.tracing import instrument_app, setup_tracing
 from neuralgram.router.cache import RedisResponseCache
 from neuralgram.router.gateway import build_gateway
-from neuralgram.router.metering import SignupCallLimitExceededError, SpendCapExceededError, UsageMeter
+from neuralgram.router.metering import (
+    SignupCallLimitExceededError,
+    SpendCapExceededError,
+    TooManyConcurrentRequestsError,
+    UsageMeter,
+)
 
 
 @asynccontextmanager
@@ -51,6 +57,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.meter = meter
     cache = RedisResponseCache(settings.redis_url, settings.cache_ttl_seconds)
     app.state.response_cache = cache
+    demo_rate_limiter = DemoIpRateLimiter(settings.redis_url, settings.demo_ip_daily_limit)
+    app.state.demo_rate_limiter = demo_rate_limiter
     app.state.gateway = build_gateway(settings, meter, cache)
     extractor = Extractor(
         app.state.system_session_factory, app.state.gateway, queue=app.state.queue
@@ -80,6 +88,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         await app.state.digest_scheduler.stop()
         await app.state.worker_pool.stop()
         await cache.close()
+        await demo_rate_limiter.close()
         await engine.dispose()
 
 
@@ -114,6 +123,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.exception_handler(SignupCallLimitExceededError)
     async def _signup_call_limit_handler(
         request: Request, exc: SignupCallLimitExceededError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=429, content={"detail": str(exc)})
+
+    @app.exception_handler(DemoRateLimitExceededError)
+    async def _demo_rate_limit_handler(
+        request: Request, exc: DemoRateLimitExceededError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=429, content={"detail": str(exc)})
+
+    @app.exception_handler(TooManyConcurrentRequestsError)
+    async def _too_many_concurrent_handler(
+        request: Request, exc: TooManyConcurrentRequestsError
     ) -> JSONResponse:
         return JSONResponse(status_code=429, content={"detail": str(exc)})
 

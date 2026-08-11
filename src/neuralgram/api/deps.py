@@ -80,6 +80,19 @@ async def require_tenant(request: Request, api_key: str | None = Security(_api_k
             status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid or missing API key"
         )
     tenant_id, role = resolved
+    request.state.is_demo_tenant = False
+
+    demo_tenant_id = request.app.state.settings.demo_tenant_id
+    if demo_tenant_id and tenant_id == demo_tenant_id:
+        request.state.is_demo_tenant = True
+        client_ip = request.client.host if request.client else "unknown"
+        limiter = getattr(request.app.state, "demo_rate_limiter", None)
+        if limiter is not None:
+            await limiter.check_and_increment(client_ip)
+        # Each demo visitor gets an isolated slice of the shared demo tenant,
+        # keyed by IP, so unrelated visitors never see each other's data.
+        tenant_id = f"{demo_tenant_id}-{key_fingerprint(client_ip)}"
+
     request.state.tenant_id = tenant_id
     request.state.role = role
     request.state.audit_actor = key_fingerprint(api_key or "")
