@@ -49,6 +49,10 @@ export function SummariesPage() {
         title="Summaries"
         subtitle="Source drill-down, topic, and daily digest views"
       />
+      <p className="text-sm text-slate-500 mb-4">
+        A source needs at least 8 ingested messages before a summary is generated for
+        it — ingest more messages for the same source_id, then look it up here.
+      </p>
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       <Card className="mb-6">
         <form onSubmit={handleSubmit} className="flex items-end gap-3">

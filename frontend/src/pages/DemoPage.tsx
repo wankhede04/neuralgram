@@ -17,14 +17,28 @@ type Message = { user: string; text: string };
 type Chunk = { chunk_id: string; source_id: string; content_md: string };
 type SummaryNode = { summary_id: string; tree_type: string; scope_id: string; level: number; body_md: string };
 
+async function extractErrorMessage(response: Response, fallback: string): Promise<string> {
+  const text = await response.text();
+  try {
+    const parsed = JSON.parse(text);
+    if (typeof parsed.detail === "string") return parsed.detail;
+    if (Array.isArray(parsed.detail)) {
+      // FastAPI/pydantic 422 validation errors: array of {msg, loc, ...}
+      return parsed.detail.map((e: { msg?: string }) => e.msg).filter(Boolean).join("; ") || fallback;
+    }
+  } catch {
+    // not JSON, fall through
+  }
+  return text || fallback;
+}
+
 async function demoFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", "x-api-key": DEMO_API_KEY, ...init.headers },
   });
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Request failed with status ${response.status}`);
+    throw new Error(await extractErrorMessage(response, `Request failed with status ${response.status}`));
   }
   return response.json() as Promise<T>;
 }
@@ -43,8 +57,11 @@ function IngestDemo() {
     if (messages.length < 3) setMessages((prev) => [...prev, { user: "", text: "" }]);
   };
 
+  const hasMessage = messages.some((m) => m.text.trim());
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasMessage) return;
     setError(null);
     setResult(null);
     try {
@@ -109,7 +126,12 @@ function IngestDemo() {
           >
             + Add message ({messages.length}/3)
           </button>
-          <button type="submit" className="rounded-full px-4 py-2 text-sm text-white" style={{ backgroundColor: "#17594f" }}>
+          <button
+            type="submit"
+            disabled={!hasMessage}
+            className="rounded-full px-4 py-2 text-sm text-white disabled:opacity-40"
+            style={{ backgroundColor: "#17594f" }}
+          >
             Ingest
           </button>
         </div>
@@ -125,8 +147,11 @@ function SearchDemo() {
   const [results, setResults] = useState<Chunk[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const hasQuery = query.trim().length > 0;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasQuery) return;
     setError(null);
     try {
       const params = new URLSearchParams({ q: query, mode: "hybrid", limit: "5" });
@@ -148,7 +173,12 @@ function SearchDemo() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button type="submit" className="rounded-full px-4 py-2 text-sm text-white" style={{ backgroundColor: "#17594f" }}>
+        <button
+          type="submit"
+          disabled={!hasQuery}
+          className="rounded-full px-4 py-2 text-sm text-white disabled:opacity-40"
+          style={{ backgroundColor: "#17594f" }}
+        >
           Search
         </button>
       </form>
@@ -169,8 +199,11 @@ function SummariesDemo() {
   const [nodes, setNodes] = useState<SummaryNode[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const hasScopeId = scopeId.trim().length > 0;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasScopeId) return;
     setError(null);
     try {
       const params = new URLSearchParams({ tree: "source", scope_id: scopeId });
@@ -192,11 +225,20 @@ function SummariesDemo() {
           value={scopeId}
           onChange={(e) => setScopeId(e.target.value)}
         />
-        <button type="submit" className="rounded-full px-4 py-2 text-sm text-white" style={{ backgroundColor: "#17594f" }}>
+        <button
+          type="submit"
+          disabled={!hasScopeId}
+          className="rounded-full px-4 py-2 text-sm text-white disabled:opacity-40"
+          style={{ backgroundColor: "#17594f" }}
+        >
           Look up
         </button>
       </form>
       {error && <p className="text-sm mt-3 text-red-600">{error}</p>}
+      <p className="text-xs mt-2" style={{ color: "#9aa5a6" }}>
+        A source needs at least 8 ingested messages before a summary is generated —
+        the demo's 3-message-per-call cap means you'll need a signup account to see one.
+      </p>
       <div className="space-y-2 mt-3">
         {nodes.length === 0 && <p className="text-sm" style={{ color: "#9aa5a6" }}>No summary yet — summaries build up after enough messages accumulate.</p>}
         {nodes.map((node) => (
@@ -242,7 +284,9 @@ export function DemoPage() {
         </div>
 
         <p className="text-sm mt-10" style={{ color: "#7a8a8c" }}>
-          Want your own tenant with no limits?{" "}
+          Want your own tenant? Signup accounts have no 3-message ingest cap — ingest
+          8+ messages in one call to see a real summary get generated, plus 3 free AI
+          completion calls and 3 free embedding calls.{" "}
           <Link to="/login" className="hover:underline" style={{ color: "#17594f" }}>
             Sign up →
           </Link>
