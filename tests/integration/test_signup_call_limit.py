@@ -19,7 +19,7 @@ from testcontainers.postgres import PostgresContainer
 from neuralgram.api.app import create_app
 from neuralgram.common.config import Settings
 from neuralgram.router.metering import SignupCallLimitExceededError, UsageMeter
-from neuralgram.storage.models import UsageEvent, User
+from neuralgram.storage.models import User
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

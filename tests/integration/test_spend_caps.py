@@ -1,5 +1,6 @@
 """Integration: usage attribution + hard spend caps (M4-3 acceptance)."""
 
+import asyncio
 import os
 import subprocess
 import sys
@@ -18,8 +19,12 @@ from testcontainers.postgres import PostgresContainer
 
 from neuralgram.common.config import Settings
 from neuralgram.router.gateway import Message, build_gateway
-from neuralgram.router.metering import SpendCapExceededError, UsageMeter
-from neuralgram.storage.models import UsageEvent
+from neuralgram.router.metering import (
+    SignupCallLimitExceededError,
+    SpendCapExceededError,
+    UsageMeter,
+)
+from neuralgram.storage.models import UsageEvent, User
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -110,3 +115,53 @@ async def test_uncapped_and_unmetered_calls_pass(engine: AsyncEngine) -> None:
             .all()
         )
     assert events == [], "calls without tenant context are not attributed"
+
+
+async def test_concurrent_calls_never_exceed_the_signup_lifetime_cap(
+    async_url: str,
+) -> None:
+    """15 concurrent calls against a limit of 3 must never let more than 3 through.
+
+    Regression for a check-then-act race: without `UsageMeter.tenant_lock`
+    serializing check + provider-call + record per tenant, concurrent
+    requests can all pass the pre-flight count check before any of them is
+    recorded, letting a deliberate burst blow past the cap entirely.
+
+    Uses a wider pool than the other tests here (matching `build_engine`'s
+    production sizing) since the advisory lock holds a connection per
+    in-flight concurrent call on this tenant.
+    """
+    engine = create_async_engine(async_url, pool_size=20, max_overflow=30)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with factory() as session:
+        session.add(
+            User(
+                id="race-user",
+                email="race@example.com",
+                hashed_password="x",
+                tenant_id="race-tenant",
+                hashed_key="race-hashed-key",
+                role="writer",
+            )
+        )
+        await session.commit()
+
+    meter = UsageMeter(factory, spend_caps_usd={}, signup_call_limit=3)
+    gateway = build_gateway(Settings(_env_file=None), meter)
+
+    async def one_call(i: int) -> str:
+        try:
+            await gateway.complete(
+                [Message(role="user", content=f"call {i}")], "hint:fast", tenant_id="race-tenant"
+            )
+        except SignupCallLimitExceededError:
+            return "blocked"
+        return "ok"
+
+    try:
+        results = await asyncio.gather(*(one_call(i) for i in range(15)))
+    finally:
+        await engine.dispose()
+    assert results.count("ok") == 3, (
+        f"expected exactly 3 calls to succeed, got {results.count('ok')}: {results}"
+    )

@@ -183,19 +183,20 @@ class ModelGateway:
             metrics.cache_misses_total.labels(hint_label).inc()
 
         if self._meter is not None and tenant_id is not None:
-            await self._meter.check_cap(tenant_id)
-            await self._meter.check_signup_call_limit(tenant_id, primary.hint)
-
-        result, served_by = await self._complete_with_failover(messages, candidates)
-        if self._meter is not None and tenant_id is not None:
-            await self._meter.record(
-                tenant_id,
-                served_by.provider,
-                served_by.model,
-                served_by.hint,
-                result.usage.tokens_in,
-                result.usage.tokens_out,
-            )
+            async with self._meter.tenant_lock(tenant_id):
+                await self._meter.check_cap(tenant_id)
+                await self._meter.check_signup_call_limit(tenant_id, primary.hint)
+                result, served_by = await self._complete_with_failover(messages, candidates)
+                await self._meter.record(
+                    tenant_id,
+                    served_by.provider,
+                    served_by.model,
+                    served_by.hint,
+                    result.usage.tokens_in,
+                    result.usage.tokens_out,
+                )
+        else:
+            result, served_by = await self._complete_with_failover(messages, candidates)
         if self._cache is not None and key is not None:
             await self._cache.set(key, result)
         return result
@@ -231,14 +232,16 @@ class ModelGateway:
         """Embed texts via the provider routed for `hint:embed`."""
         resolution = self._route_table.resolve("hint:embed")
         if self._meter is not None and tenant_id is not None:
-            await self._meter.check_cap(tenant_id)
-            await self._meter.check_signup_call_limit(tenant_id, "embed")
-        vectors = await self._provider_for(resolution.provider).embed(texts)
-        if self._meter is not None and tenant_id is not None:
-            tokens_in = sum(math.ceil(len(text) / 4) for text in texts)
-            await self._meter.record(
-                tenant_id, resolution.provider, resolution.model, "embed", tokens_in, 0
-            )
+            async with self._meter.tenant_lock(tenant_id):
+                await self._meter.check_cap(tenant_id)
+                await self._meter.check_signup_call_limit(tenant_id, "embed")
+                vectors = await self._provider_for(resolution.provider).embed(texts)
+                tokens_in = sum(math.ceil(len(text) / 4) for text in texts)
+                await self._meter.record(
+                    tenant_id, resolution.provider, resolution.model, "embed", tokens_in, 0
+                )
+        else:
+            vectors = await self._provider_for(resolution.provider).embed(texts)
         return vectors
 
 

@@ -24,8 +24,17 @@ from neuralgram.common.config import Settings
 
 
 def build_engine(settings: Settings) -> AsyncEngine:
-    """Create the async engine for `settings.database_url`. No connection is opened yet."""
-    return create_async_engine(settings.database_url, pool_pre_ping=True)
+    """Create the async engine for `settings.database_url`. No connection is opened yet.
+
+    Sized above SQLAlchemy's default (pool_size=5, max_overflow=10): the
+    per-tenant advisory lock in `UsageMeter.tenant_lock` holds one pooled
+    connection for each in-flight metered call on that tenant, so a small
+    pool would starve unrelated tenants' requests under realistic
+    concurrent load, not just abusive load.
+    """
+    return create_async_engine(
+        settings.database_url, pool_pre_ping=True, pool_size=20, max_overflow=30
+    )
 
 
 def build_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:

@@ -7,14 +7,19 @@ end to end; real provider prices join the table when providers do (M4-2).
 """
 
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from decimal import Decimal
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, text
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from neuralgram.common.errors import NeuralgramError
 from neuralgram.observability import metrics
 from neuralgram.storage.models import UsageEvent, User
+
+_LOCK_WAIT_TIMEOUT_MS = 3_000
 
 # USD per 1M tokens: (input, output). Nominal prices for mock models.
 PRICE_TABLE: dict[tuple[str, str], tuple[Decimal, Decimal]] = {
@@ -37,6 +42,10 @@ class SignupCallLimitExceededError(NeuralgramError):
     """A self-serve signup tenant reached its lifetime call limit for this call category."""
 
 
+class TooManyConcurrentRequestsError(NeuralgramError):
+    """A tenant has too many in-flight metered calls; new ones fail fast instead of queueing."""
+
+
 def call_cost_usd(provider: str, model: str, tokens_in: int, tokens_out: int) -> Decimal:
     """Cost of one call from the price table (default price for unknown models)."""
     price_in, price_out = PRICE_TABLE.get((provider, model), _DEFAULT_PRICE)
@@ -55,6 +64,38 @@ class UsageMeter:
         self._session_factory = session_factory
         self._caps = {tenant: Decimal(str(cap)) for tenant, cap in spend_caps_usd.items()}
         self._signup_call_limit = signup_call_limit
+
+    @asynccontextmanager
+    async def tenant_lock(self, tenant_id: str) -> AsyncIterator[None]:
+        """Serialize metered calls for one tenant (session-level Postgres advisory lock).
+
+        `check_cap`/`check_signup_call_limit` are check-then-act against
+        `usage_events` -- without this, concurrent calls for the same tenant
+        can all pass the check before any of them is recorded, blowing past
+        the cap. Holding this lock across check -> provider call -> record
+        closes that race; unrelated tenants are never blocked by it.
+        """
+        async with self._session_factory() as session:
+            # A caller stacking many concurrent requests against its own tenant
+            # would otherwise queue on the blocking lock while holding a pooled
+            # DB connection open -- bounding the wait keeps that from starving
+            # the connection pool for unrelated tenants (a self-inflicted DoS).
+            await session.execute(text(f"SET LOCAL lock_timeout = '{_LOCK_WAIT_TIMEOUT_MS}ms'"))
+            try:
+                await session.execute(
+                    text("SELECT pg_advisory_lock(hashtext(:tid))"), {"tid": tenant_id}
+                )
+            except DBAPIError as exc:
+                raise TooManyConcurrentRequestsError(
+                    "Too many simultaneous requests on this account right now. "
+                    "Please retry in a moment."
+                ) from exc
+            try:
+                yield
+            finally:
+                await session.execute(
+                    text("SELECT pg_advisory_unlock(hashtext(:tid))"), {"tid": tenant_id}
+                )
 
     async def spent_usd(self, tenant_id: str) -> Decimal:
         """Total recorded spend for a tenant."""
