@@ -64,7 +64,7 @@ async def _seed_signup_tenant(meter: UsageMeter) -> str:
             insert(User).values(
                 id=uuid.uuid4().hex,
                 email=f"{uuid.uuid4().hex}@example.com",
-                hashed_password="not-a-real-hash",
+                hashed_password="not-a-real-hash",  # pragma: allowlist secret
                 tenant_id=tenant_id,
                 hashed_key=uuid.uuid4().hex,
                 role="writer",
@@ -139,7 +139,10 @@ def test_signup_tenant_search_gets_real_429_over_http(
     with TestClient(create_app(settings)) as client:
         signup = client.post(
             "/auth/signup",
-            json={"email": f"{uuid.uuid4().hex}@example.com", "password": "hunter2pass"},
+            json={
+                "email": f"{uuid.uuid4().hex}@example.com",
+                "password": "hunter2pass",  # pragma: allowlist secret
+            },
         )
         assert signup.status_code == 201, signup.text
         body = signup.json()
