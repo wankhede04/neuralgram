@@ -110,12 +110,18 @@ class UsageMeter:
             ).scalar_one()
 
         if count >= self._signup_call_limit:
-            category = "embedding" if is_embed else "Anthropic completion"
-            raise SignupCallLimitExceededError(
-                f"tenant {tenant_id!r} reached its lifetime {category} call limit "
-                f"({count} of {self._signup_call_limit}); further calls of this "
-                "kind are blocked"
-            )
+            if is_embed:
+                message = (
+                    f"You've used all {self._signup_call_limit} free searches/ingests on "
+                    "this account. Sign up for your own tenant with no limits, or contact "
+                    "us for more."
+                )
+            else:
+                message = (
+                    f"This account has used all {self._signup_call_limit} free AI-processing "
+                    "calls. Further automatic processing (summaries, extraction) is paused."
+                )
+            raise SignupCallLimitExceededError(message)
 
     async def record(
         self,

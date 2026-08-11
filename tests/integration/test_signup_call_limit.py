@@ -11,10 +11,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
+from neuralgram.api.app import create_app
+from neuralgram.common.config import Settings
 from neuralgram.router.metering import SignupCallLimitExceededError, UsageMeter
 from neuralgram.storage.models import UsageEvent, User
 
@@ -121,3 +124,44 @@ async def test_null_hint_completion_call_counts_toward_completion_cap(
     await _seed_events(meter, tenant_id, "summarize", 2)
     with pytest.raises(SignupCallLimitExceededError):
         await meter.check_signup_call_limit(tenant_id, "summarize")
+
+
+def test_signup_tenant_search_gets_real_429_over_http(
+    async_url: str, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    """The one live user-visible path: a real HTTP /memory/search request past
+    the embed cap must return a 429 with a readable, non-leaking detail body."""
+    settings = Settings(
+        _env_file=None,
+        database_url=async_url,
+        vault_path=str(tmp_path_factory.mktemp("vault")),
+    )
+    with TestClient(create_app(settings)) as client:
+        signup = client.post(
+            "/auth/signup",
+            json={"email": f"{uuid.uuid4().hex}@example.com", "password": "hunter2pass"},
+        )
+        assert signup.status_code == 201, signup.text
+        body = signup.json()
+        api_key = body["api_key"]
+        tenant_id = body["tenant_id"]
+
+        engine = create_async_engine(async_url)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+        meter = UsageMeter(session_factory=factory, spend_caps_usd={})
+
+        import asyncio
+
+        asyncio.run(_seed_events(meter, tenant_id, "embed", 3))
+
+        response = client.get(
+            "/memory/search",
+            params={"q": "test", "mode": "semantic"},
+            headers={"x-api-key": api_key},
+        )
+
+        assert response.status_code == 429, response.text
+        detail = response.json()["detail"]
+        assert isinstance(detail, str)
+        assert detail
+        assert tenant_id not in detail
