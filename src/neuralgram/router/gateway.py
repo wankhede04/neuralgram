@@ -184,6 +184,7 @@ class ModelGateway:
 
         if self._meter is not None and tenant_id is not None:
             await self._meter.check_cap(tenant_id)
+            await self._meter.check_signup_call_limit(tenant_id, primary.hint)
 
         result, served_by = await self._complete_with_failover(messages, candidates)
         if self._meter is not None and tenant_id is not None:
@@ -231,6 +232,7 @@ class ModelGateway:
         resolution = self._route_table.resolve("hint:embed")
         if self._meter is not None and tenant_id is not None:
             await self._meter.check_cap(tenant_id)
+            await self._meter.check_signup_call_limit(tenant_id, "embed")
         vectors = await self._provider_for(resolution.provider).embed(texts)
         if self._meter is not None and tenant_id is not None:
             tokens_in = sum(math.ceil(len(text) / 4) for text in texts)

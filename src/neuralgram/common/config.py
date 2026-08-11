@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     # Hard per-tenant spend caps in USD (env TENANT_SPEND_CAPS, JSON). No entry = no cap.
     tenant_spend_caps: dict[str, float] = {}
 
+    # Lifetime cap on real provider calls for self-serve signup tenants
+    # (users-table rows) -- 3 completion calls + 3 embed calls, tracked
+    # independently via existing usage_events rows, no reset (M7).
+    signup_call_limit: int = 3
+
     cache_ttl_seconds: int = 3600
 
 

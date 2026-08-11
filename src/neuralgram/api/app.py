@@ -29,7 +29,7 @@ from neuralgram.observability.queue_monitor import QueueDepthMonitor
 from neuralgram.observability.tracing import instrument_app, setup_tracing
 from neuralgram.router.cache import RedisResponseCache
 from neuralgram.router.gateway import build_gateway
-from neuralgram.router.metering import SpendCapExceededError, UsageMeter
+from neuralgram.router.metering import SignupCallLimitExceededError, SpendCapExceededError, UsageMeter
 
 
 @asynccontextmanager
@@ -43,7 +43,11 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.system_session_factory, Path(settings.vault_path)
     )
     app.state.queue = JobQueue(app.state.system_session_factory)
-    meter = UsageMeter(app.state.system_session_factory, settings.tenant_spend_caps)
+    meter = UsageMeter(
+        app.state.system_session_factory,
+        settings.tenant_spend_caps,
+        signup_call_limit=settings.signup_call_limit,
+    )
     app.state.meter = meter
     cache = RedisResponseCache(settings.redis_url, settings.cache_ttl_seconds)
     app.state.response_cache = cache
@@ -105,6 +109,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(SpendCapExceededError)
     async def _spend_cap_handler(request: Request, exc: SpendCapExceededError) -> JSONResponse:
+        return JSONResponse(status_code=429, content={"detail": str(exc)})
+
+    @app.exception_handler(SignupCallLimitExceededError)
+    async def _signup_call_limit_handler(
+        request: Request, exc: SignupCallLimitExceededError
+    ) -> JSONResponse:
         return JSONResponse(status_code=429, content={"detail": str(exc)})
 
     app.mount("/metrics", metrics_app())
