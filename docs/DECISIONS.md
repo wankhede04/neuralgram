@@ -298,3 +298,70 @@ before every push, not just trusted from a subagent's self-report.
 **Why:** provenance on a project intended for public/community visibility
 matters — commit history should reflect the project's actual maintainer
 identity, not whichever local tool happened to run the command.
+
+---
+
+## 9. Deployment stack and hardening for it
+
+**Decision:** Vercel (frontend, static Vite build) + Neon (Postgres +
+pgvector) + Upstash (Redis) + Render (backend, one Web Service running
+the existing Docker image — no separate "worker" service, since the
+background job processor is in-process `asyncio` tasks in the same
+FastAPI app, started in its `lifespan`).
+
+**Why one Render Web Service is enough, not a separate Background
+Worker service:** confirmed Render Web Services are genuinely persistent,
+always-on containers, not a serverless-per-request model — in-process
+`asyncio` background loops keep running continuously for the life of the
+instance regardless of HTTP traffic. No architecture change needed for
+this to work.
+
+**Confirmed, real risk found and fixed before deploying:** two bugs were
+found by deliberately reproducing failure modes specific to this stack,
+not by inspection alone:
+
+1. **Silent worker death on a not-yet-ready DB.** `WorkerPool._worker_loop`
+   had no error handling around its `claim()` call — one unhandled
+   exception (e.g. the schema not existing yet at boot) permanently ended
+   that worker task, with zero log output, for the life of the process.
+   Reproduced locally (container started before migrations ran) and
+   confirmed extraction jobs sat `queued` forever with no error visible
+   anywhere. This is a materially *worse* risk on Render's free tier than
+   it was locally, since Render's paid "Pre-Deploy Command" (which would
+   gate traffic behind successful migrations) is confirmed **not
+   available on the free tier** — so the same race can recur on every
+   free-tier deploy, not just local first-boot.
+
+   Fixed: `_worker_loop` now catches, logs, and backs off
+   (`DEFAULT_CLAIM_ERROR_BACKOFF_SECONDS = 2.0`) on a `claim()` failure
+   instead of dying. Re-verified by reproducing the exact failure again
+   (container up before migrations) — workers logged `worker.claim_failed`
+   repeatedly, then self-healed the moment the schema existed, with **no
+   restart**, and successfully processed a real ingest end to end
+   (confirmed via real Anthropic + Jina calls in the logs).
+
+2. **Neon's autosuspend can kill already-open pooled connections.** Neon's
+   free tier autosuspends its compute after inactivity; its own docs
+   describe `"terminating connection due to administrator command"`
+   occurring on already-open, previously-idle pooled connections, not
+   just new connection attempts — a real risk for a persistent
+   SQLAlchemy pool sitting behind a continuously-polling worker. Fixed by
+   adding `pool_recycle=280` to `build_engine` (below Neon's 5-minute
+   default suspend window), alongside the `pool_pre_ping=True` already in
+   place.
+
+**Confirmed, not a risk:** running multiple instances of this worker
+simultaneously. Render's zero-downtime deploys run the new instance
+*while the old one keeps serving* for up to several minutes, and
+horizontally-scaled plans run multiple instances as steady state — so
+multiple independent copies of the in-process worker WILL poll the same
+Postgres job queue concurrently, as a normal, expected occurrence, not
+an edge case. This is safe only because `JobQueue.claim()` already uses
+row-level lease claiming (competing-consumers pattern) rather than any
+in-memory coordination — verified this is the correct, standard
+mitigation for that scenario.
+
+**Accepted, not fixed:** Render's free-tier cold start (spins down after
+15 minutes idle, ~30–60s to wake on the next request). This is a UX
+tradeoff, not a correctness bug — no code change was made to work around
+it; upgrading to Render's paid tier removes it with zero further changes.

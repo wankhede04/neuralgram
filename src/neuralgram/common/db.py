@@ -31,9 +31,20 @@ def build_engine(settings: Settings) -> AsyncEngine:
     connection for each in-flight metered call on that tenant, so a small
     pool would starve unrelated tenants' requests under realistic
     concurrent load, not just abusive load.
+
+    `pool_recycle` is set below serverless-Postgres autosuspend windows
+    (e.g. Neon's free-tier default is 5 minutes) -- providers like Neon
+    can kill an already-open, previously-idle pooled connection server-side
+    on suspend/resume, which `pool_pre_ping` alone doesn't fully cover for
+    a long-lived pool; recycling connections before that window elapses
+    avoids handing out a connection the server has already dropped.
     """
     return create_async_engine(
-        settings.database_url, pool_pre_ping=True, pool_size=20, max_overflow=30
+        settings.database_url,
+        pool_pre_ping=True,
+        pool_size=20,
+        max_overflow=30,
+        pool_recycle=280,
     )
 
 

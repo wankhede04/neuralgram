@@ -19,6 +19,7 @@ Handler = Callable[[dict[str, Any]], Awaitable[None]]
 DEFAULT_WORKERS = 3
 DEFAULT_MODEL_CONCURRENCY = 2
 DEFAULT_POLL_INTERVAL_SECONDS = 1.0
+DEFAULT_CLAIM_ERROR_BACKOFF_SECONDS = 2.0
 
 logger = get_logger(__name__)
 
@@ -65,7 +66,20 @@ class WorkerPool:
 
     async def _worker_loop(self, worker_id: str) -> None:
         while True:
-            job = await self._queue.claim(worker_id, lease_seconds=self._lease_seconds)
+            try:
+                job = await self._queue.claim(worker_id, lease_seconds=self._lease_seconds)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                # A transient DB error (e.g. the schema not existing yet at
+                # boot, or a serverless Postgres autosuspend/resume blip)
+                # must not permanently kill this worker task -- there is no
+                # supervisor that restarts it, so an unhandled exception
+                # here would silently stop all future job processing for
+                # the life of the process.
+                logger.exception("worker.claim_failed", worker=worker_id)
+                await asyncio.sleep(DEFAULT_CLAIM_ERROR_BACKOFF_SECONDS)
+                continue
             if job is None:
                 self._wake.clear()
                 with contextlib.suppress(TimeoutError):

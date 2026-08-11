@@ -4,7 +4,7 @@ import asyncio
 from typing import Any
 
 from neuralgram.memory.queue import ClaimedJob
-from neuralgram.memory.workers import WorkerPool
+from neuralgram.memory.workers import DEFAULT_CLAIM_ERROR_BACKOFF_SECONDS, WorkerPool
 
 
 class InMemoryQueue:
@@ -85,6 +85,40 @@ async def test_unknown_kind_is_failed() -> None:
     pool = WorkerPool(queue, {}, workers=1, poll_interval=0.01)  # type: ignore[arg-type]
     await _drain(pool, queue, expected=1)
     assert queue.failed == ["job-0"]
+
+
+async def test_transient_claim_error_does_not_permanently_kill_the_worker(
+    monkeypatch: Any,
+) -> None:
+    """A claim() failure (e.g. schema not ready yet, or a DB blip) must be
+    logged and retried, not silently end the worker task forever -- there
+    is no supervisor to restart it."""
+    import neuralgram.memory.workers as workers_module
+
+    monkeypatch.setattr(workers_module, "DEFAULT_CLAIM_ERROR_BACKOFF_SECONDS", 0.01)
+
+    class FlakyQueue(InMemoryQueue):
+        def __init__(self, jobs: list[ClaimedJob]) -> None:
+            super().__init__(jobs)
+            self._claim_attempts = 0
+
+        async def claim(self, worker_id: str, lease_seconds: int = 60) -> ClaimedJob | None:
+            self._claim_attempts += 1
+            if self._claim_attempts == 1:
+                raise RuntimeError('relation "jobs" does not exist')
+            return await super().claim(worker_id, lease_seconds)
+
+    queue = FlakyQueue(_jobs(1))
+    pool = WorkerPool(
+        queue,  # type: ignore[arg-type]
+        {"extract_chunk": lambda payload: asyncio.sleep(0)},
+        workers=1,
+        poll_interval=0.01,
+    )
+    await _drain(pool, queue, expected=1)
+
+    assert queue.acked == ["job-0"], "the job must still be processed after the first claim() error"
+    assert DEFAULT_CLAIM_ERROR_BACKOFF_SECONDS == 2.0, "module default is unchanged for real use"
 
 
 async def test_wake_triggers_idle_workers_before_poll() -> None:
