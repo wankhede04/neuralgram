@@ -40,7 +40,7 @@ export function LandingPage() {
           Try a Demo
         </button>
         <p className="text-sm mt-3" style={{ color: "#7a8a8c" }}>
-          Or sign up free — 3 AI calls included, no credit card needed.
+          Or sign up free — 4 AI calls included, no credit card needed.
         </p>
       </section>
 
@@ -130,7 +130,7 @@ export function LandingPage() {
           <div>
             <p className="text-sm font-semibold mb-1" style={{ color: "#111" }}>Free signup account</p>
             <p className="text-sm leading-relaxed" style={{ color: "#5b6a6c" }}>
-              3 AI completion calls + 3 embedding calls, lifetime, on your own private
+              4 AI completion calls + 4 embedding calls, lifetime, on your own private
               tenant. Search by keyword stays unlimited even after that.
             </p>
           </div>

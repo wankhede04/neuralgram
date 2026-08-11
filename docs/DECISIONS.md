@@ -94,7 +94,7 @@ usage-count ceiling.
 ### 4.2 Lifetime call limit for self-serve signups (`signup_call_limit`)
 
 **Decision:** every self-serve signup tenant (a row in `users`) gets
-exactly **3 lifetime real completion calls + 3 lifetime real embedding
+exactly **4 lifetime real completion calls + 4 lifetime real embedding
 calls, tracked independently, no reset** — enforced regardless of what
 triggered the call (a direct user search, or a background job triggered
 by their own earlier ingest). Static `.env` keys and the demo tenant are

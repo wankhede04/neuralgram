@@ -1,4 +1,4 @@
-"""Integration: self-serve signup tenants are capped at 3 lifetime calls
+"""Integration: self-serve signup tenants are capped at 4 lifetime calls
 per category (completions vs embeddings); static keys and the demo
 tenant are unaffected (M7)."""
 
@@ -80,30 +80,30 @@ async def _seed_events(meter: UsageMeter, tenant_id: str, hint: str | None, coun
         await meter.record(tenant_id, "anthropic", "claude-haiku-4-5-20251001", hint, 10, 10)
 
 
-async def test_signup_tenant_blocked_after_3_completion_calls(meter: UsageMeter) -> None:
+async def test_signup_tenant_blocked_after_4_completion_calls(meter: UsageMeter) -> None:
     tenant_id = await _seed_signup_tenant(meter)
-    await _seed_events(meter, tenant_id, "summarize", 3)
+    await _seed_events(meter, tenant_id, "summarize", 4)
     with pytest.raises(SignupCallLimitExceededError):
         await meter.check_signup_call_limit(tenant_id, "summarize")
 
 
 async def test_signup_tenant_completion_cap_independent_of_embed_cap(meter: UsageMeter) -> None:
     tenant_id = await _seed_signup_tenant(meter)
-    await _seed_events(meter, tenant_id, "summarize", 3)
-    # 3 completion calls used up, but zero embed calls -- embed must still pass.
+    await _seed_events(meter, tenant_id, "summarize", 4)
+    # 4 completion calls used up, but zero embed calls -- embed must still pass.
     await meter.check_signup_call_limit(tenant_id, "embed")
 
 
-async def test_signup_tenant_blocked_after_3_embed_calls(meter: UsageMeter) -> None:
+async def test_signup_tenant_blocked_after_4_embed_calls(meter: UsageMeter) -> None:
     tenant_id = await _seed_signup_tenant(meter)
-    await _seed_events(meter, tenant_id, "embed", 3)
+    await _seed_events(meter, tenant_id, "embed", 4)
     with pytest.raises(SignupCallLimitExceededError):
         await meter.check_signup_call_limit(tenant_id, "embed")
 
 
 async def test_signup_tenant_under_cap_passes(meter: UsageMeter) -> None:
     tenant_id = await _seed_signup_tenant(meter)
-    await _seed_events(meter, tenant_id, "fast", 2)
+    await _seed_events(meter, tenant_id, "fast", 3)
     await meter.check_signup_call_limit(tenant_id, "fast")
 
 
@@ -121,7 +121,7 @@ async def test_null_hint_completion_call_counts_toward_completion_cap(
     # as a completion (non-embed) call, not be silently excluded by NULL
     # three-valued logic in the SQL filter.
     await meter.record(tenant_id, "anthropic", "some-model", None, 10, 10)
-    await _seed_events(meter, tenant_id, "summarize", 2)
+    await _seed_events(meter, tenant_id, "summarize", 3)
     with pytest.raises(SignupCallLimitExceededError):
         await meter.check_signup_call_limit(tenant_id, "summarize")
 
@@ -155,7 +155,7 @@ def test_signup_tenant_search_gets_real_429_over_http(
 
         import asyncio
 
-        asyncio.run(_seed_events(meter, tenant_id, "embed", 3))
+        asyncio.run(_seed_events(meter, tenant_id, "embed", 4))
 
         response = client.get(
             "/memory/search",

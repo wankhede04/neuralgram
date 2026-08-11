@@ -79,9 +79,9 @@ class Settings(BaseSettings):
     tenant_spend_caps: dict[str, float] = {}
 
     # Lifetime cap on real provider calls for self-serve signup tenants
-    # (users-table rows) -- 3 completion calls + 3 embed calls, tracked
+    # (users-table rows) -- 4 completion calls + 4 embed calls, tracked
     # independently via existing usage_events rows, no reset (M7).
-    signup_call_limit: int = 3
+    signup_call_limit: int = 4
 
     cache_ttl_seconds: int = 3600
 

@@ -59,7 +59,7 @@ class UsageMeter:
         self,
         session_factory: async_sessionmaker[AsyncSession],
         spend_caps_usd: dict[str, float],
-        signup_call_limit: int = 3,
+        signup_call_limit: int = 4,
         demo_tenant_prefix: str | None = None,
         demo_spend_cap_usd: float = 0.0,
     ) -> None:
