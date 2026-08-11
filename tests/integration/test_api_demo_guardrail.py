@@ -111,6 +111,110 @@ def test_demo_ip_rate_limit_blocks_after_daily_cap(client: TestClient) -> None:
     assert "demo" in fourth.json()["detail"].lower()
 
 
+def test_demo_search_ai_cap_is_independent_of_ingest_cap(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> None:
+    """Exhausting the ingest quota must not block semantic/hybrid search, and
+    vice versa -- each category gets its own daily budget per IP."""
+    with (
+        PostgresContainer("pgvector/pgvector:pg16") as pg,
+        RedisContainer("redis:7-alpine") as redis,
+    ):
+        url = pg.get_connection_url().replace("postgresql+psycopg2://", "postgresql+asyncpg://")
+        upgrade = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=REPO_ROOT,
+            env=os.environ | {"DATABASE_URL": url},
+            capture_output=True,
+            text=True,
+        )
+        assert upgrade.returncode == 0, upgrade.stderr
+
+        settings = Settings(
+            _env_file=None,
+            database_url=url,
+            redis_url=f"redis://{redis.get_container_host_ip()}:{redis.get_exposed_port(6379)}/0",
+            vault_path=str(tmp_path_factory.mktemp("vault-split")),
+            api_keys={DEMO_KEY: DEMO_TENANT},
+            demo_tenant_id=DEMO_TENANT,
+            demo_ip_daily_limit=1,
+        )
+        with TestClient(create_app(settings)) as client:
+            # Spend the single daily ingest slot.
+            first_ingest = client.post(
+                "/memory/ingest",
+                json={"source_id": "split-src", "payload": _messages(1)},
+                headers={"x-api-key": DEMO_KEY},
+            )
+            assert first_ingest.status_code == 200, first_ingest.text
+
+            blocked_ingest = client.post(
+                "/memory/ingest",
+                json={"source_id": "split-src-2", "payload": _messages(1)},
+                headers={"x-api-key": DEMO_KEY},
+            )
+            assert blocked_ingest.status_code == 429, blocked_ingest.text
+
+            # Search (semantic/hybrid) has its own separate budget -- still available.
+            search = client.get(
+                "/memory/search",
+                params={"q": "message", "mode": "semantic"},
+                headers={"x-api-key": DEMO_KEY},
+            )
+            assert search.status_code == 200, search.text
+
+
+def test_demo_keyword_search_and_summaries_are_unmetered(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> None:
+    """Keyword search and summary lookups need no AI call and must stay
+    free for demo visitors even after the ingest quota is spent."""
+    with (
+        PostgresContainer("pgvector/pgvector:pg16") as pg,
+        RedisContainer("redis:7-alpine") as redis,
+    ):
+        url = pg.get_connection_url().replace("postgresql+psycopg2://", "postgresql+asyncpg://")
+        upgrade = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=REPO_ROOT,
+            env=os.environ | {"DATABASE_URL": url},
+            capture_output=True,
+            text=True,
+        )
+        assert upgrade.returncode == 0, upgrade.stderr
+
+        settings = Settings(
+            _env_file=None,
+            database_url=url,
+            redis_url=f"redis://{redis.get_container_host_ip()}:{redis.get_exposed_port(6379)}/0",
+            vault_path=str(tmp_path_factory.mktemp("vault-unmetered")),
+            api_keys={DEMO_KEY: DEMO_TENANT},
+            demo_tenant_id=DEMO_TENANT,
+            demo_ip_daily_limit=1,
+        )
+        with TestClient(create_app(settings)) as client:
+            client.post(
+                "/memory/ingest",
+                json={"source_id": "unmetered-src", "payload": _messages(1)},
+                headers={"x-api-key": DEMO_KEY},
+            )
+
+            for _ in range(5):
+                keyword = client.get(
+                    "/memory/search",
+                    params={"q": "message", "mode": "keyword"},
+                    headers={"x-api-key": DEMO_KEY},
+                )
+                assert keyword.status_code == 200, keyword.text
+
+            summaries = client.get(
+                "/memory/summaries",
+                params={"tree": "source", "scope_id": "unmetered-src"},
+                headers={"x-api-key": DEMO_KEY},
+            )
+            assert summaries.status_code == 200, summaries.text
+
+
 def test_demo_visitors_on_different_ips_get_isolated_data(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> None:

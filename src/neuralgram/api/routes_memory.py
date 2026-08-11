@@ -14,6 +14,7 @@ from neuralgram.ingestion.canonicalize import ingest as canonicalize
 from neuralgram.memory.chunker import chunk
 from neuralgram.memory.retrieval import ChunkRetrieval, RetrievedChunk
 from neuralgram.memory.tree_retrieval import SummaryNode, TreeRetrieval
+from neuralgram.router.metering import SEARCH_AI_HINT
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -43,12 +44,23 @@ async def ingest_endpoint(
 ) -> IngestResponse:
     """Canonicalize `payload`, chunk it, and persist rows + vault files atomically."""
     if getattr(request.state, "is_demo_tenant", False):
+        # Rate-limit every attempt, even ones later rejected for size below --
+        # otherwise an oversized-payload retry loop would never spend a slot.
+        limiter = getattr(request.app.state, "demo_rate_limiter", None)
+        if limiter is not None:
+            client_ip = request.client.host if request.client else "unknown"
+            await limiter.check_and_increment(client_ip, "ingest")
+
         message_count = len(body.payload.get("messages", []))
         if message_count > 3:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Demo tenant is limited to 3 messages per ingest call",
             )
+    else:
+        meter = getattr(request.app.state, "meter", None)
+        if meter is not None:
+            await meter.check_and_record_ingest_request(tenant_id)
 
     try:
         docs = canonicalize(body.source_id, body.payload, body.source_type)
@@ -93,7 +105,22 @@ async def search_endpoint(
     async with tenant_session(factory, tenant_id) as session:
         if mode == "keyword":
             return await retrieval.search(session, q, limit)
-        query_vector = (await request.app.state.gateway.embed([q], tenant_id=tenant_id))[0]
+
+        # Only semantic/hybrid need a query-embedding call -- keyword search
+        # needs no AI call at all and is never subject to either cap below.
+        # (The signup lifetime cap itself is checked inside gateway.embed,
+        # atomically under its own tenant_lock -- not here.)
+        if getattr(request.state, "is_demo_tenant", False):
+            limiter = getattr(request.app.state, "demo_rate_limiter", None)
+            if limiter is not None:
+                client_ip = request.client.host if request.client else "unknown"
+                await limiter.check_and_increment(client_ip, "search")
+
+        query_vector = (
+            await request.app.state.gateway.embed(
+                [q], tenant_id=tenant_id, meter_hint=SEARCH_AI_HINT
+            )
+        )[0]
         if mode == "semantic":
             return await retrieval.semantic_search(session, query_vector, limit)
         return await retrieval.hybrid_search(session, q, query_vector, limit)

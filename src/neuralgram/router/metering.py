@@ -11,13 +11,16 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from decimal import Decimal
 
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from neuralgram.common.errors import NeuralgramError
 from neuralgram.observability import metrics
 from neuralgram.storage.models import UsageEvent, User
+
+SEARCH_AI_HINT = "search_embed"
+INGEST_HINT = "ingest_request"
 
 _LOCK_WAIT_TIMEOUT_MS = 3_000
 
@@ -39,7 +42,7 @@ class SpendCapExceededError(NeuralgramError):
 
 
 class SignupCallLimitExceededError(NeuralgramError):
-    """A self-serve signup tenant reached its lifetime call limit for this call category."""
+    """A self-serve signup tenant reached its lifetime request limit for this action."""
 
 
 class TooManyConcurrentRequestsError(NeuralgramError):
@@ -73,8 +76,8 @@ class UsageMeter:
     async def tenant_lock(self, tenant_id: str) -> AsyncIterator[None]:
         """Serialize metered calls for one tenant (session-level Postgres advisory lock).
 
-        `check_cap`/`check_signup_call_limit` are check-then-act against
-        `usage_events` -- without this, concurrent calls for the same tenant
+        `check_cap` is check-then-act against `usage_events` -- without this,
+        concurrent calls for the same tenant
         can all pass the check before any of them is recorded, blowing past
         the cap. Holding this lock across check -> provider call -> record
         closes that race; unrelated tenants are never blocked by it.
@@ -154,48 +157,72 @@ class UsageMeter:
                 f"(spent ${spent:.6f} of ${cap:.2f}); further model calls are blocked"
             )
 
-    async def check_signup_call_limit(self, tenant_id: str, hint: str | None) -> None:
-        """Raise `SignupCallLimitExceededError` if a signup tenant hit its lifetime cap.
+    async def _is_signup_tenant(self, tenant_id: str) -> bool:
+        """A row in `users` means this is a self-serve signup tenant.
 
-        Only applies to tenants with a matching `users` row (self-serve
-        signups) -- static .env keys and the demo tenant have no such
-        row and are never affected. Completion calls (any hint except
-        "embed") and embed calls are counted and capped independently.
+        Static `.env` keys and the demo tenant have no such row and are
+        never affected by either request cap below.
         """
         async with self._session_factory() as session:
-            is_signup_tenant = (
+            return (
                 await session.execute(select(User.id).where(User.tenant_id == tenant_id))
             ).scalar_one_or_none() is not None
-            if not is_signup_tenant:
-                return
 
-            is_embed = hint == "embed"
-            filter_clause = (
-                UsageEvent.hint == "embed"
-                if is_embed
-                else or_(UsageEvent.hint != "embed", UsageEvent.hint.is_(None))
-            )
+    async def check_and_record_ingest_request(self, tenant_id: str) -> None:
+        """Atomically check-then-record one POST /memory/ingest call against
+        a signup tenant's lifetime ingest cap.
+
+        Counts actual ingest *requests* (a dedicated `usage_events` marker
+        recorded here, cost/tokens zero), not the AI calls one ingest can
+        fan out into -- a single call ingesting many messages still only
+        counts once. Self-contained (own `tenant_lock`): call this once,
+        synchronously, in the ingest route handler before any processing --
+        it does not nest inside `complete`/`embed`'s own locking.
+        """
+        if not await self._is_signup_tenant(tenant_id):
+            return
+        async with self.tenant_lock(tenant_id):
+            async with self._session_factory() as session:
+                count = (
+                    await session.execute(
+                        select(func.count())
+                        .select_from(UsageEvent)
+                        .where(UsageEvent.tenant_id == tenant_id, UsageEvent.hint == INGEST_HINT)
+                    )
+                ).scalar_one()
+            if count >= self._signup_call_limit:
+                raise SignupCallLimitExceededError(
+                    f"You've used all {self._signup_call_limit} free ingest calls on this "
+                    "account. Sign up for your own tenant with no limits, or contact us for "
+                    "more."
+                )
+            await self.record(tenant_id, "internal", "ingest-request", INGEST_HINT, 0, 0)
+
+    async def check_search_ai_request_limit(self, tenant_id: str) -> None:
+        """Raise `SignupCallLimitExceededError` once a signup tenant has made
+        `signup_call_limit` lifetime semantic/hybrid search calls.
+
+        Internal: called from `ModelGateway.embed` only when `meter_hint ==
+        SEARCH_AI_HINT`, inside its existing `tenant_lock`, so the check and
+        the real embed call it gates stay atomic under concurrency -- do not
+        call this directly from route code.
+        """
+        if not await self._is_signup_tenant(tenant_id):
+            return
+        async with self._session_factory() as session:
             count = (
                 await session.execute(
                     select(func.count())
                     .select_from(UsageEvent)
-                    .where(UsageEvent.tenant_id == tenant_id, filter_clause)
+                    .where(UsageEvent.tenant_id == tenant_id, UsageEvent.hint == SEARCH_AI_HINT)
                 )
             ).scalar_one()
-
         if count >= self._signup_call_limit:
-            if is_embed:
-                message = (
-                    f"You've used all {self._signup_call_limit} free searches/ingests on "
-                    "this account. Sign up for your own tenant with no limits, or contact "
-                    "us for more."
-                )
-            else:
-                message = (
-                    f"This account has used all {self._signup_call_limit} free AI-processing "
-                    "calls. Further automatic processing (summaries, extraction) is paused."
-                )
-            raise SignupCallLimitExceededError(message)
+            raise SignupCallLimitExceededError(
+                f"You've used all {self._signup_call_limit} free semantic/hybrid searches on "
+                "this account. Keyword search stays free -- or sign up for a tenant with no "
+                "limits."
+            )
 
     async def record(
         self,

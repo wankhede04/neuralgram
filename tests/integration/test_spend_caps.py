@@ -20,6 +20,7 @@ from testcontainers.postgres import PostgresContainer
 from neuralgram.common.config import Settings
 from neuralgram.router.gateway import Message, build_gateway
 from neuralgram.router.metering import (
+    SEARCH_AI_HINT,
     SignupCallLimitExceededError,
     SpendCapExceededError,
     UsageMeter,
@@ -117,15 +118,16 @@ async def test_uncapped_and_unmetered_calls_pass(engine: AsyncEngine) -> None:
     assert events == [], "calls without tenant context are not attributed"
 
 
-async def test_concurrent_calls_never_exceed_the_signup_lifetime_cap(
+async def test_concurrent_ingest_calls_never_exceed_the_signup_lifetime_cap(
     async_url: str,
 ) -> None:
-    """15 concurrent calls against a limit of 3 must never let more than 3 through.
+    """15 concurrent ingest checks against a limit of 3 must never let more
+    than 3 through.
 
-    Regression for a check-then-act race: without `UsageMeter.tenant_lock`
-    serializing check + provider-call + record per tenant, concurrent
-    requests can all pass the pre-flight count check before any of them is
-    recorded, letting a deliberate burst blow past the cap entirely.
+    Regression for a check-then-act race: without `check_and_record_ingest_
+    request`'s own `tenant_lock`, concurrent requests can all pass the
+    pre-flight count check before any of them is recorded, letting a
+    deliberate burst blow past the cap entirely.
 
     Uses a wider pool than the other tests here (matching `build_engine`'s
     production sizing) since the advisory lock holds a connection per
@@ -147,12 +149,51 @@ async def test_concurrent_calls_never_exceed_the_signup_lifetime_cap(
         await session.commit()
 
     meter = UsageMeter(factory, spend_caps_usd={}, signup_call_limit=3)
+
+    async def one_call(_: int) -> str:
+        try:
+            await meter.check_and_record_ingest_request("race-tenant")
+        except SignupCallLimitExceededError:
+            return "blocked"
+        return "ok"
+
+    try:
+        results = await asyncio.gather(*(one_call(i) for i in range(15)))
+    finally:
+        await engine.dispose()
+    assert results.count("ok") == 3, (
+        f"expected exactly 3 calls to succeed, got {results.count('ok')}: {results}"
+    )
+
+
+async def test_concurrent_search_ai_calls_never_exceed_the_signup_lifetime_cap(
+    async_url: str,
+) -> None:
+    """Same race, exercised through the search-AI embed path instead: 15
+    concurrent `gateway.embed(meter_hint=SEARCH_AI_HINT)` calls against a
+    limit of 3 must never let more than 3 through."""
+    engine = create_async_engine(async_url, pool_size=20, max_overflow=30)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with factory() as session:
+        session.add(
+            User(
+                id="search-race-user",
+                email="search-race@example.com",
+                hashed_password="x",
+                tenant_id="search-race-tenant",
+                hashed_key="search-race-hashed-key",
+                role="writer",
+            )
+        )
+        await session.commit()
+
+    meter = UsageMeter(factory, spend_caps_usd={}, signup_call_limit=3)
     gateway = build_gateway(Settings(_env_file=None), meter)
 
     async def one_call(i: int) -> str:
         try:
-            await gateway.complete(
-                [Message(role="user", content=f"call {i}")], "hint:fast", tenant_id="race-tenant"
+            await gateway.embed(
+                [f"query {i}"], tenant_id="search-race-tenant", meter_hint=SEARCH_AI_HINT
             )
         except SignupCallLimitExceededError:
             return "blocked"

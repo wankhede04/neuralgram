@@ -16,6 +16,7 @@ from neuralgram.common.config import Settings
 from neuralgram.common.errors import ProviderError, RoutingError
 from neuralgram.observability import metrics
 from neuralgram.router.health import ProviderHealth
+from neuralgram.router.metering import SEARCH_AI_HINT
 from neuralgram.router.routing import HINTS, Resolution, RouteTable, mock_route_table
 
 if TYPE_CHECKING:
@@ -185,7 +186,6 @@ class ModelGateway:
         if self._meter is not None and tenant_id is not None:
             async with self._meter.tenant_lock(tenant_id):
                 await self._meter.check_cap(tenant_id)
-                await self._meter.check_signup_call_limit(tenant_id, primary.hint)
                 result, served_by = await self._complete_with_failover(messages, candidates)
                 await self._meter.record(
                     tenant_id,
@@ -228,17 +228,31 @@ class ModelGateway:
             f"all providers exhausted for candidates {[(c.provider, c.model) for c in candidates]}"
         ) from last_error
 
-    async def embed(self, texts: list[str], tenant_id: str | None = None) -> list[list[float]]:
-        """Embed texts via the provider routed for `hint:embed`."""
+    async def embed(
+        self,
+        texts: list[str],
+        tenant_id: str | None = None,
+        meter_hint: str | None = None,
+    ) -> list[list[float]]:
+        """Embed texts via the provider routed for `hint:embed`.
+
+        `meter_hint`, when given, overrides the hint recorded to
+        `usage_events` (metering/capping only -- routing always uses
+        `hint:embed` regardless). Lets call sites distinguish *why* an
+        embed call happened (e.g. a user search vs. background ingest
+        extraction) without affecting which provider serves it.
+        """
         resolution = self._route_table.resolve("hint:embed")
+        recorded_hint = meter_hint or "embed"
         if self._meter is not None and tenant_id is not None:
             async with self._meter.tenant_lock(tenant_id):
                 await self._meter.check_cap(tenant_id)
-                await self._meter.check_signup_call_limit(tenant_id, "embed")
+                if recorded_hint == SEARCH_AI_HINT:
+                    await self._meter.check_search_ai_request_limit(tenant_id)
                 vectors = await self._provider_for(resolution.provider).embed(texts)
                 tokens_in = sum(math.ceil(len(text) / 4) for text in texts)
                 await self._meter.record(
-                    tenant_id, resolution.provider, resolution.model, "embed", tokens_in, 0
+                    tenant_id, resolution.provider, resolution.model, recorded_hint, tokens_in, 0
                 )
         else:
             vectors = await self._provider_for(resolution.provider).embed(texts)

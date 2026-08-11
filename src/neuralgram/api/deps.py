@@ -86,9 +86,10 @@ async def require_tenant(request: Request, api_key: str | None = Security(_api_k
     if demo_tenant_id and tenant_id == demo_tenant_id:
         request.state.is_demo_tenant = True
         client_ip = request.client.host if request.client else "unknown"
-        limiter = getattr(request.app.state, "demo_rate_limiter", None)
-        if limiter is not None:
-            await limiter.check_and_increment(client_ip)
+        # Per-category rate limiting (ingest/search) happens at the route
+        # level, not here -- keyword search and summaries need no AI call
+        # and are never rate-limited at all, matching the signup tenant's
+        # rule (no API call = unlimited).
         # Each demo visitor gets an isolated slice of the shared demo tenant,
         # keyed by IP, so unrelated visitors never see each other's data.
         tenant_id = f"{demo_tenant_id}-{key_fingerprint(client_ip)}"

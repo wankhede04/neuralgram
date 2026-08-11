@@ -91,14 +91,45 @@ call), so a single dollar ceiling is the only unit that's meaningful
 across all of them for tenants that need a spend ceiling rather than a
 usage-count ceiling.
 
-### 4.2 Lifetime call limit for self-serve signups (`signup_call_limit`)
+### 4.2 Lifetime request limit for self-serve signups (`signup_call_limit`)
 
-**Decision:** every self-serve signup tenant (a row in `users`) gets
-exactly **4 lifetime real completion calls + 4 lifetime real embedding
-calls, tracked independently, no reset** — enforced regardless of what
-triggered the call (a direct user search, or a background job triggered
-by their own earlier ingest). Static `.env` keys and the demo tenant are
-structurally exempt (no `users` row to match against).
+**Decision (revised):** every self-serve signup tenant (a row in `users`)
+gets exactly **4 lifetime ingest calls + 4 lifetime AI-backed (semantic
+or hybrid) search calls, tracked and capped independently, no reset**.
+Static `.env` keys and the demo tenant are structurally exempt (no
+`users` row to match against). Keyword search and summary lookups make
+no AI call at all and are never capped, for either signup or demo
+tenants (`UsageMeter.check_and_record_ingest_request` /
+`check_search_ai_request_limit`).
+
+**Why requests, not raw AI calls (this superseded an earlier version of
+the cap):** the original mechanism counted raw provider calls — every
+`hint:embed`/completion call, regardless of source — in two shared
+buckets. That broke in two ways once exercised end-to-end: (1) one
+ingest call fans out into *many* embed/completion calls internally (one
+pair per chunk), so "4 embed calls" could be exhausted by a single
+8-message ingest, nowhere near "4 ingest calls" as a user would count
+them; and (2) ingestion and search shared the *same* embed bucket, so
+running a couple of test searches silently ate into the budget meant for
+ingestion (and vice versa), which is exactly what caused a real signup
+account to unexpectedly hit its cap after only 2 semantic searches.
+Fixed by moving to two independently-tracked action-level counters:
+- **Ingest**: `check_and_record_ingest_request` is a single self-contained,
+  atomic (own `tenant_lock`) check-and-increment, called once per
+  `POST /memory/ingest`, in the route handler *before* any processing —
+  so message count inside one call never affects the count.
+- **Search**: the check lives *inside* `ModelGateway.embed`, gated on a
+  `meter_hint == SEARCH_AI_HINT` marker the search route passes in —
+  atomic under `embed`'s own existing `tenant_lock` (check → provider
+  call → record, same lock scope as the dollar spend cap). Exactly one
+  embed call happens per semantic/hybrid search, so counting these is
+  equivalent to counting AI-backed search requests.
+
+Both mechanisms were verified under 15-way concurrency (a limit of 3
+never let more than 3 through in either path) — see
+`test_concurrent_ingest_calls_never_exceed_the_signup_lifetime_cap` /
+`test_concurrent_search_ai_calls_never_exceed_the_signup_lifetime_cap` in
+`tests/integration/test_spend_caps.py`.
 
 **Why lifetime, not a recurring quota:** the goal is "let someone try the
 product with real AI once," not "give away a recurring free tier
@@ -106,14 +137,15 @@ forever" — a recurring quota would mean unlimited AI cost over a long
 enough time horizon per free account; a lifetime cap bounds total
 exposure per signup to a small, fixed number.
 
-**Why it also blocks background-triggered calls:** ingest triggers
-background embed/completion jobs (chunk embedding, extraction, buffer-seal
-summarization). Confirmed as an intentional design choice — it's meant to
-be a blunt *total AI usage* kill switch per tenant, not just a limit on
-calls the user directly typed a request for. The tradeoff (accepted): a
-single large ingest could exhaust the embed budget before the user ever
-runs a search. Search itself stays usable afterward in `mode=keyword`
-(no embed call, so it's never capped).
+**On background-triggered AI calls (extraction, buffer-seal summarization):**
+these are no longer separately capped by count at all — once an ingest
+call is accepted (under the 4-call ingest cap), whatever background
+processing it triggers is bounded only by the pre-existing dollar spend
+cap (§4.1, opt-in per tenant), not by this mechanism. This is a
+deliberate simplification: capping ingest at the *request* level already
+bounds how much background work a signup tenant can ever trigger, so a
+second, separate AI-call-count cap over that same background work would
+be redundant complexity.
 
 ### 4.3 Per-IP isolation & rate limit for the unauthenticated demo
 
@@ -124,31 +156,35 @@ visible to visitor B's search, and there was no cap on total requests
 - Deriving a **per-IP tenant** at auth time
   (`{demo_tenant_id}-{sha256(ip)[:12]}`) instead of one shared tenant —
   each visitor's data is now isolated by IP.
-- A **Redis-backed atomic per-IP daily request cap**
-  (`DemoIpRateLimiter`, default 8 requests/IP/day) — `INCR`+`EXPIRE` is
-  atomic, so it's safe under concurrent requests/workers without extra
-  locking.
+- A **Redis-backed atomic per-IP, per-category daily request cap**
+  (`DemoIpRateLimiter`, default 8/day per category) — `INCR`+`EXPIRE` on a
+  key scoped to `(ip, day, category)` is atomic, so it's safe under
+  concurrent requests/workers without extra locking. `category` is
+  `"ingest"` or `"search"` (semantic/hybrid only) — mirroring §4.2's
+  split for signup tenants, keyword search and summaries are never
+  metered through this limiter at all.
 
 **Why Redis and not an in-memory counter:** an in-memory Python dict would
 not survive multiple uvicorn workers or app restarts, and would let each
 worker process enforce its own independent (and therefore ineffective)
 limit.
 
-**Gap found and closed: the per-IP request count alone doesn't bound
-cost.** An ingest request fans out into background jobs — each ingested
-message triggers 1 embed call + 1 completion call (extraction), plus a
+**Gap found and closed: request count alone doesn't bound cost.** An
+ingest request fans out into background jobs — each ingested message
+triggers 1 embed call + 1 completion call (extraction), plus a
 summarization completion every 8 accumulated messages — so a worst-case
-abuser turns "8 requests/day" into roughly 6x that many real AI calls.
-Worse, the demo tenant is structurally exempt from §4.2's lifetime cap
-(no `users` row), and a plain exact-match `tenant_spend_caps` entry can
-never catch it either, since every visitor now gets a distinct per-IP
-tenant_id. Closed by an **aggregate dollar cap shared across the whole
-demo family**: `UsageMeter` accepts `demo_tenant_prefix` +
-`demo_spend_cap_usd`, and `check_cap` sums spend across every tenant_id
-matching `{demo_tenant_prefix}%` (not just the exact one) before allowing
-a call — so one visitor's spend counts against every other visitor's
-shared budget, closing the IP-rotation loophole that a purely per-IP
-limit can't.
+abuser can turn a handful of ingest requests into many more real AI
+calls. Worse, the demo tenant is structurally exempt from §4.2's
+per-tenant caps (no `users` row), and a plain exact-match
+`tenant_spend_caps` entry can never catch it either, since every visitor
+now gets a distinct per-IP tenant_id. Closed by an **aggregate dollar cap
+shared across the whole demo family**: `UsageMeter` accepts
+`demo_tenant_prefix` + `demo_spend_cap_usd`, and `check_cap` sums spend
+across every tenant_id matching `{demo_tenant_prefix}%` (not just the
+exact one) before allowing a call — so one visitor's spend counts
+against every other visitor's shared budget, closing the IP-rotation
+loophole that a purely per-IP limit can't. This dollar backstop is
+independent of, and stacks with, the per-category request counts above.
 
 ---
 

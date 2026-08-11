@@ -123,15 +123,16 @@ export function LandingPage() {
           <div>
             <p className="text-sm font-semibold mb-1" style={{ color: "#111" }}>Try a Demo (no signup)</p>
             <p className="text-sm leading-relaxed" style={{ color: "#5b6a6c" }}>
-              8 requests per day per visitor, 3 messages per ingest call. Your demo
+              8 ingest calls + 8 semantic/hybrid searches per day per visitor (3
+              messages per ingest call). Keyword search stays unlimited. Your demo
               data is private to you — other visitors never see it.
             </p>
           </div>
           <div>
             <p className="text-sm font-semibold mb-1" style={{ color: "#111" }}>Free signup account</p>
             <p className="text-sm leading-relaxed" style={{ color: "#5b6a6c" }}>
-              4 AI completion calls + 4 embedding calls, lifetime, on your own private
-              tenant. Search by keyword stays unlimited even after that.
+              4 ingest calls + 4 semantic/hybrid searches, lifetime, on your own
+              private tenant. Keyword search stays unlimited even after that.
             </p>
           </div>
         </div>

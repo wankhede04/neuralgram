@@ -285,8 +285,9 @@ export function DemoPage() {
 
         <p className="text-sm mt-10" style={{ color: "#7a8a8c" }}>
           Want your own tenant? Signup accounts have no 3-message ingest cap — ingest
-          8+ messages in one call to see a real summary get generated, plus 4 free AI
-          completion calls and 4 free embedding calls.{" "}
+          8+ messages in one call to see a real summary get generated, plus 4 free
+          ingest calls and 4 free semantic/hybrid searches, lifetime. Keyword search
+          always stays free.{" "}
           <Link to="/login" className="hover:underline" style={{ color: "#17594f" }}>
             Sign up →
           </Link>
