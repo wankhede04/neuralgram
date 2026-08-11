@@ -165,3 +165,47 @@ async def test_concurrent_calls_never_exceed_the_signup_lifetime_cap(
     assert results.count("ok") == 3, (
         f"expected exactly 3 calls to succeed, got {results.count('ok')}: {results}"
     )
+
+
+async def test_demo_spend_cap_is_shared_across_all_per_ip_demo_tenants(
+    engine: AsyncEngine,
+) -> None:
+    """One demo visitor's spend counts against every other demo visitor's budget.
+
+    Each demo visitor gets its own per-IP tenant_id (`demo-tenant-<ip-hash>`),
+    so a plain exact-match `tenant_spend_caps` entry could never catch them
+    collectively. `demo_tenant_prefix`/`demo_spend_cap_usd` aggregate spend
+    across the whole family under one shared ceiling instead.
+    """
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    meter = UsageMeter(
+        factory,
+        spend_caps_usd={},
+        demo_tenant_prefix="demo-tenant",
+        demo_spend_cap_usd=0.000001,
+    )
+    gateway = build_gateway(Settings(_env_file=None), meter)
+
+    # First visitor (IP hash "aaa") spends just enough to trip the shared cap.
+    await gateway.complete(
+        [Message(role="user", content="x " * 200)],
+        "hint:reasoning",
+        tenant_id="demo-tenant-aaa",
+    )
+    assert await meter.spent_usd_by_prefix("demo-tenant") > Decimal("0.000001")
+
+    # A completely different visitor (IP hash "bbb") is blocked too, even
+    # though *they* personally haven't spent anything yet.
+    with pytest.raises(SpendCapExceededError, match="demo"):
+        await gateway.complete(
+            [Message(role="user", content="fresh visitor")],
+            "hint:fast",
+            tenant_id="demo-tenant-bbb",
+        )
+
+    # A tenant outside the demo family entirely is unaffected.
+    await gateway.complete(
+        [Message(role="user", content="real signup tenant")],
+        "hint:fast",
+        tenant_id="signup-tenant-real",
+    )

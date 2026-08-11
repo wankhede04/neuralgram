@@ -53,6 +53,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.system_session_factory,
         settings.tenant_spend_caps,
         signup_call_limit=settings.signup_call_limit,
+        demo_tenant_prefix=settings.demo_tenant_id or None,
+        demo_spend_cap_usd=settings.demo_spend_cap_usd,
     )
     app.state.meter = meter
     cache = RedisResponseCache(settings.redis_url, settings.cache_ttl_seconds)

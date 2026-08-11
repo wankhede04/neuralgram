@@ -125,7 +125,7 @@ visible to visitor B's search, and there was no cap on total requests
   (`{demo_tenant_id}-{sha256(ip)[:12]}`) instead of one shared tenant —
   each visitor's data is now isolated by IP.
 - A **Redis-backed atomic per-IP daily request cap**
-  (`DemoIpRateLimiter`, default 20 requests/IP/day) — `INCR`+`EXPIRE` is
+  (`DemoIpRateLimiter`, default 8 requests/IP/day) — `INCR`+`EXPIRE` is
   atomic, so it's safe under concurrent requests/workers without extra
   locking.
 
@@ -133,6 +133,22 @@ visible to visitor B's search, and there was no cap on total requests
 not survive multiple uvicorn workers or app restarts, and would let each
 worker process enforce its own independent (and therefore ineffective)
 limit.
+
+**Gap found and closed: the per-IP request count alone doesn't bound
+cost.** An ingest request fans out into background jobs — each ingested
+message triggers 1 embed call + 1 completion call (extraction), plus a
+summarization completion every 8 accumulated messages — so a worst-case
+abuser turns "8 requests/day" into roughly 6x that many real AI calls.
+Worse, the demo tenant is structurally exempt from §4.2's lifetime cap
+(no `users` row), and a plain exact-match `tenant_spend_caps` entry can
+never catch it either, since every visitor now gets a distinct per-IP
+tenant_id. Closed by an **aggregate dollar cap shared across the whole
+demo family**: `UsageMeter` accepts `demo_tenant_prefix` +
+`demo_spend_cap_usd`, and `check_cap` sums spend across every tenant_id
+matching `{demo_tenant_prefix}%` (not just the exact one) before allowing
+a call — so one visitor's spend counts against every other visitor's
+shared budget, closing the IP-rotation loophole that a purely per-IP
+limit can't.
 
 ---
 

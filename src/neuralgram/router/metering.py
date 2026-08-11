@@ -60,10 +60,14 @@ class UsageMeter:
         session_factory: async_sessionmaker[AsyncSession],
         spend_caps_usd: dict[str, float],
         signup_call_limit: int = 3,
+        demo_tenant_prefix: str | None = None,
+        demo_spend_cap_usd: float = 0.0,
     ) -> None:
         self._session_factory = session_factory
         self._caps = {tenant: Decimal(str(cap)) for tenant, cap in spend_caps_usd.items()}
         self._signup_call_limit = signup_call_limit
+        self._demo_tenant_prefix = demo_tenant_prefix or None
+        self._demo_spend_cap = Decimal(str(demo_spend_cap_usd)) if demo_spend_cap_usd else None
 
     @asynccontextmanager
     async def tenant_lock(self, tenant_id: str) -> AsyncIterator[None]:
@@ -109,8 +113,37 @@ class UsageMeter:
             ).scalar_one()
         return Decimal(total)
 
+    async def spent_usd_by_prefix(self, tenant_prefix: str) -> Decimal:
+        """Total recorded spend across every tenant_id starting with `tenant_prefix`.
+
+        Used for the demo tenant family: each visitor gets its own per-IP
+        tenant_id (`{demo_tenant_id}-{ip_fingerprint}`), so an exact-match
+        cap can never catch them collectively -- this aggregates spend
+        across all of them under one shared ceiling.
+        """
+        async with self._session_factory() as session:
+            total = (
+                await session.execute(
+                    select(func.coalesce(func.sum(UsageEvent.cost_usd), 0)).where(
+                        UsageEvent.tenant_id.like(f"{tenant_prefix}%")
+                    )
+                )
+            ).scalar_one()
+        return Decimal(total)
+
     async def check_cap(self, tenant_id: str) -> None:
-        """Raise `SpendCapExceededError` when the tenant has reached its hard cap."""
+        """Raise `SpendCapExceededError` when the tenant (or its demo family) hit its cap."""
+        demo_prefix = self._demo_tenant_prefix
+        if demo_prefix is not None and self._demo_spend_cap is not None:
+            is_demo_family = tenant_id == demo_prefix or tenant_id.startswith(f"{demo_prefix}-")
+            if is_demo_family:
+                demo_spent = await self.spent_usd_by_prefix(demo_prefix)
+                if demo_spent >= self._demo_spend_cap:
+                    raise SpendCapExceededError(
+                        "The demo has reached its shared usage budget for today. "
+                        "Sign up for your own tenant to keep going, or try again later."
+                    )
+
         cap = self._caps.get(tenant_id)
         if cap is None:
             return

@@ -123,7 +123,7 @@ export function LandingPage() {
           <div>
             <p className="text-sm font-semibold mb-1" style={{ color: "#111" }}>Try a Demo (no signup)</p>
             <p className="text-sm leading-relaxed" style={{ color: "#5b6a6c" }}>
-              20 requests per day per visitor, 3 messages per ingest call. Your demo
+              8 requests per day per visitor, 3 messages per ingest call. Your demo
               data is private to you — other visitors never see it.
             </p>
           </div>
