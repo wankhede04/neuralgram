@@ -85,6 +85,12 @@ class Settings(BaseSettings):
 
     cache_ttl_seconds: int = 3600
 
+    # Frontend origins allowed to call this API cross-origin (env
+    # CORS_ALLOWED_ORIGINS, JSON list). Defaults to the local Vite dev
+    # server only; production frontend origins (e.g. the Vercel deploy
+    # URL) must be added explicitly via the env var, not hardcoded here.
+    cors_allowed_origins: list[str] = ["http://localhost:5173"]
+
 
 @lru_cache
 def get_settings() -> Settings:

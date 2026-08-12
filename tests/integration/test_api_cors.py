@@ -34,6 +34,26 @@ def test_preflight_allows_dashboard_origin() -> None:
     assert "x-api-key" in allowed_headers
 
 
+def test_cors_allowed_origins_is_configurable() -> None:
+    """A deployed frontend origin (e.g. a Vercel URL) must be addable via
+    config, not hardcoded -- CORS_ALLOWED_ORIGINS overrides the dev default."""
+    settings = Settings(
+        _env_file=None,
+        cors_allowed_origins=["https://neuralgram.vercel.app", "http://localhost:5173"],
+    )
+    with TestClient(create_app(settings)) as client:
+        response = client.options(
+            "/memory/search",
+            headers={
+                "Origin": "https://neuralgram.vercel.app",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "x-api-key",
+            },
+        )
+    assert response.status_code == 200, response.text
+    assert response.headers["access-control-allow-origin"] == "https://neuralgram.vercel.app"
+
+
 @pytest.fixture(scope="module")
 def client(tmp_path_factory: pytest.TempPathFactory) -> Iterator[TestClient]:
     # An unrecognized x-api-key falls through to the DB-backed auth tier
