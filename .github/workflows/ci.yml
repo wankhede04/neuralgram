@@ -121,14 +121,18 @@ jobs:
       - name: Build image
         run: make build
       - name: Boot image and probe /health
+        env:
+          DATABASE_URL: postgresql+asyncpg://neuralgram:neuralgram@localhost:5432/neuralgram # pragma: allowlist secret
+          MOCK_PROVIDERS: "true"
         run: |
           # --network host: the image's entrypoint now runs `alembic upgrade
           # head` before serving, so it needs to reach the postgres service
           # container -- host networking lets "localhost:5432" inside the
           # smoke container resolve to the runner's mapped service port.
+          # -e DATABASE_URL / -e MOCK_PROVIDERS (bare, no "=value") pass
+          # through this step's own env values into the container.
           docker run -d --rm --name smoke --network host \
-            -e DATABASE_URL="postgresql+asyncpg://neuralgram:neuralgram@localhost:5432/neuralgram" \
-            -e MOCK_PROVIDERS=true \
+            -e DATABASE_URL -e MOCK_PROVIDERS \
             neuralgram:dev
           for i in $(seq 1 30); do
             if curl -sf http://127.0.0.1:8000/health; then ok=1; break; fi
