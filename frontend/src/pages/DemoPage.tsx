@@ -48,6 +48,7 @@ function IngestDemo() {
   const [messages, setMessages] = useState<Message[]>([{ user: "", text: "" }]);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const updateMessage = (index: number, field: keyof Message, value: string) => {
     setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, [field]: value } : m)));
@@ -61,9 +62,10 @@ function IngestDemo() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hasMessage) return;
+    if (!hasMessage || loading) return;
     setError(null);
     setResult(null);
+    setLoading(true);
     try {
       const now = Date.now() / 1000;
       const response = await demoFetch<{ documents: number; chunks_inserted: number }>(
@@ -84,6 +86,8 @@ function IngestDemo() {
       setResult(`Ingested ${response.documents} document(s), ${response.chunks_inserted} chunk(s) inserted.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ingest failed.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -128,11 +132,11 @@ function IngestDemo() {
           </button>
           <button
             type="submit"
-            disabled={!hasMessage}
+            disabled={!hasMessage || loading}
             className="rounded-full px-4 py-2 text-sm text-white disabled:opacity-40"
             style={{ backgroundColor: "#17594f" }}
           >
-            Ingest
+            {loading ? "Ingesting…" : "Ingest"}
           </button>
         </div>
       </form>
@@ -146,19 +150,23 @@ function SearchDemo() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Chunk[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const hasQuery = query.trim().length > 0;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hasQuery) return;
+    if (!hasQuery || loading) return;
     setError(null);
+    setLoading(true);
     try {
       const params = new URLSearchParams({ q: query, mode: "hybrid", limit: "5" });
       const response = await demoFetch<Chunk[]>(`/memory/search?${params.toString()}`);
       setResults(response);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -175,11 +183,11 @@ function SearchDemo() {
         />
         <button
           type="submit"
-          disabled={!hasQuery}
+          disabled={!hasQuery || loading}
           className="rounded-full px-4 py-2 text-sm text-white disabled:opacity-40"
           style={{ backgroundColor: "#17594f" }}
         >
-          Search
+          {loading ? "Searching…" : "Search"}
         </button>
       </form>
       {error && <p className="text-sm mt-3 text-red-600">{error}</p>}
@@ -198,19 +206,23 @@ function SummariesDemo() {
   const [scopeId, setScopeId] = useState("");
   const [nodes, setNodes] = useState<SummaryNode[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const hasScopeId = scopeId.trim().length > 0;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hasScopeId) return;
+    if (!hasScopeId || loading) return;
     setError(null);
+    setLoading(true);
     try {
       const params = new URLSearchParams({ tree: "source", scope_id: scopeId });
       const response = await demoFetch<SummaryNode[]>(`/memory/summaries?${params.toString()}`);
       setNodes(response);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lookup failed.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -227,11 +239,11 @@ function SummariesDemo() {
         />
         <button
           type="submit"
-          disabled={!hasScopeId}
+          disabled={!hasScopeId || loading}
           className="rounded-full px-4 py-2 text-sm text-white disabled:opacity-40"
           style={{ backgroundColor: "#17594f" }}
         >
-          Look up
+          {loading ? "Looking up…" : "Look up"}
         </button>
       </form>
       {error && <p className="text-sm mt-3 text-red-600">{error}</p>}
