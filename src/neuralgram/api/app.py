@@ -146,8 +146,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router)
 
     @app.get("/health")
+    @app.head("/health")
     async def health() -> dict[str, str]:
-        """Liveness probe: returns service status and version."""
+        """Liveness probe: returns service status and version.
+
+        Explicitly allows HEAD (not just GET) -- uptime monitors commonly
+        probe with HEAD requests, which Starlette does not add
+        automatically for a plain @app.get route. Two decorators (not
+        `api_route(methods=[...])`) so each method gets its own OpenAPI
+        route/operationId instead of colliding on one.
+        """
         return {"status": "ok", "version": __version__}
 
     instrument_app(app)
